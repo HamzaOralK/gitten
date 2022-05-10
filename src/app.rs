@@ -1,35 +1,21 @@
-#![allow(dead_code)]
-
 use utility::is_repository;
 use std::{fs};
-use std::path::PathBuf;
-use git2::{Repository};
 use tui::widgets::{ListState};
 use crate::utility;
 
 pub struct App {
-    pub items: StatefulList<(String, String, bool)>,
+    pub repositories: StatefulList<(String, String, bool)>,
     pub tick: u64
 }
 
 impl App {
     pub fn new() -> App {
         let mut content = Vec::new();
-        let paths = fs::read_dir("/Users/hok/tenera").unwrap();
+        let path = std::env::args().nth(1).unwrap_or("./".to_string());
 
-        paths.for_each(|p| {
-            let dir = p.unwrap();
-            content.push(
-                (
-                    dir.path().to_str().unwrap().to_string(),
-                    dir.file_name().into_string().unwrap(),
-                    is_repository(dir.path())
-                )
-            );
-        });
-
+        generate_repository_content(path, &mut content);
         App {
-            items: StatefulList::with_items(content),
+            repositories: StatefulList::with_items(content),
             tick: 0
         }
     }
@@ -52,6 +38,7 @@ impl<T: Clone> StatefulList<T> {
         }
     }
 
+    #[allow(dead_code)]
     fn add(&mut self, items: Vec<T>) {
         self.items.push(items[0].clone())
     }
@@ -89,3 +76,20 @@ impl<T: Clone> StatefulList<T> {
     }
 }
 
+fn generate_repository_content(path: String, content: &mut Vec<(String, String, bool)>) {
+    let paths = fs::read_dir(path).unwrap();
+
+    paths.for_each(|p| {
+        let dir = p.unwrap();
+        if !dir.file_name().to_str().unwrap().starts_with(".") {
+            content.push(
+                (
+                    dir.path().to_str().unwrap().to_string(),
+                    dir.file_name().into_string().unwrap(),
+                    is_repository(dir.path())
+                )
+            );
+        }
+    });
+    content.sort();
+}

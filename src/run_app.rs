@@ -1,19 +1,16 @@
 use std::{io};
-use std::borrow::Borrow;
-use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::time::{Duration, Instant};
-use std::string::String;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode};
 use tui::backend::Backend;
 use tui::{Frame, Terminal};
 use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
-use tui::layout::{Alignment, Constraint, Direction, Layout};
+use tui::layout::{Alignment, Constraint, Corner, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
-use tui::text::{Span, Spans};
+use tui::text::{Spans};
 use crate::{App};
-use crate::utility::{get_repository, get_repository_tags};
+use crate::utility::{get_repository, get_repository_branches, get_repository_tags};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
@@ -34,9 +31,9 @@ pub fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Left => app.items.unselect(),
-                    KeyCode::Down => app.items.next(),
-                    KeyCode::Up => app.items.previous(),
+                    KeyCode::Left => app.repositories.unselect(),
+                    KeyCode::Down => app.repositories.next(),
+                    KeyCode::Up => app.repositories.previous(),
                     _ => {}
                 }
             }
@@ -82,7 +79,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
 
     // Files & folders
     let items: Vec<ListItem> = app
-        .items
+        .repositories
         .items
         .iter()
         .map(|i| {
@@ -97,27 +94,19 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .collect();
 
     let items = List::new(items)
-        .block(create_block().title("List"))
+        .block(create_block().title("Repositories"))
         .highlight_style(
             Style::default()
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
-    f.render_stateful_widget(items, main_chunks[0], &mut app.items.state);
+    f.render_stateful_widget(items, main_chunks[0], &mut app.repositories.state);
 
-    // Other half
     let temp_value = &("".to_string(), "".to_string(), false);
-    let selected_object = match app.items.state.selected() {
-        Some(selected) => &app.items.items[selected],
+    let selected_object = match app.repositories.state.selected() {
+        Some(selected) => &app.repositories.items[selected],
         _ => temp_value
     };
-
-    let repository = get_repository(PathBuf::from(&selected_object.0));
-    let paragraph = Paragraph::new(format!("{}", get_repository_tags(repository)))
-        .style(Style::default().bg(Color::White).fg(Color::Black))
-        .block(create_block().title("Tags"))
-        .alignment(Alignment::Left);
-    f.render_widget(paragraph, main_chunks[1]);
 
     // Info at the bottom
     let paragraph = Paragraph::new(format!("{}",  selected_object.0))
@@ -126,4 +115,26 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .alignment(Alignment::Left);
 
     f.render_widget(paragraph, chunks[1]);
+
+    // Other half
+    let right_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage(50),
+                Constraint::Percentage(50)
+            ]
+        )
+        .split(main_chunks[1]);
+
+    let repository = get_repository(PathBuf::from(&selected_object.0));
+    let tag_list = List::new(get_repository_tags(&repository))
+        .block(Block::default().borders(Borders::ALL).title("Tags"))
+        .start_corner(Corner::TopLeft);
+    f.render_widget(tag_list, right_chunks[0]);
+
+    let branch_list = List::new(get_repository_branches(&repository))
+        .block(Block::default().borders(Borders::ALL).title("Branches"))
+        .start_corner(Corner::TopLeft);
+    f.render_widget(branch_list, right_chunks[1]);
 }
