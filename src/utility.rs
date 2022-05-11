@@ -49,6 +49,14 @@ pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<ListItem>
     convert_to_list_item(branches_string)
 }
 
+pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
+    let mut branch_id: String = "".to_string();
+    if let Some(r) = repository {
+        branch_id = r.head().unwrap().name().unwrap().replace("refs/heads/", "").to_string()
+    }
+    branch_id
+}
+
 fn convert_to_list_item<T: Display>(iterator: Vec<T>) -> Vec<ListItem<'static>> {
     iterator.iter()
         .rev()

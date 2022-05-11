@@ -6,12 +6,12 @@ use crossterm::event::{Event, KeyCode};
 use tui::backend::Backend;
 use tui::{Frame, Terminal};
 use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
-use tui::layout::{Alignment, Constraint, Corner, Direction, Layout};
+use tui::layout::{Alignment, Constraint, Corner, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
-use tui::text::{Spans};
+use tui::text::{Span, Spans};
 use crate::{App};
 use crate::app::AlfredRepository;
-use crate::utility::{get_repository, get_repository_branches, get_repository_tags};
+use crate::utility::{get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
@@ -84,16 +84,11 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .items
         .iter()
         .map(|i| {
-            let lines = vec![Spans::from(i.folder_name.clone())];
-            if i.is_repository {
-                ListItem::new(lines).style(Style::default().fg(Color::White).bg(Color::Green))
-            } else {
-                ListItem::new(lines).style(Style::default().fg(Color::White).bg(Color::Black))
-            }
-
+            convert_alfred_repository_to_list_item(i, &main_chunks[0])
         })
         .collect();
 
+    // Repositories
     let items = List::new(items)
         .block(create_block().title("Repositories"))
         .highlight_style(
@@ -112,6 +107,8 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         Some(selected) => &app.repositories.items[selected],
         _ => &temp_value
     };
+    //Get selected repository
+    let repository = get_repository(PathBuf::from(&selected_object.path));
 
     // Info at the bottom
     let paragraph = Paragraph::new(format!("{}",  selected_object.path))
@@ -121,7 +118,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
 
     f.render_widget(paragraph, chunks[1]);
 
-    // Other half
+    //Branches and Tags screens
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -132,14 +129,33 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         )
         .split(main_chunks[1]);
 
-    let repository = get_repository(PathBuf::from(&selected_object.path));
+    // Tags
     let tag_list = List::new(get_repository_tags(&repository))
         .block(Block::default().borders(Borders::ALL).title("Tags"))
         .start_corner(Corner::TopLeft);
     f.render_widget(tag_list, right_chunks[0]);
 
+    // Branches
     let branch_list = List::new(get_repository_branches(&repository))
         .block(Block::default().borders(Borders::ALL).title("Branches"))
         .start_corner(Corner::TopLeft);
     f.render_widget(branch_list, right_chunks[1]);
+}
+
+fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, chunk: &'a Rect) -> ListItem<'a> {
+    let mut lines: Spans = Spans::default();
+    let mut line_color = Color::Black;
+    if item.is_repository {
+        let repository = get_repository(PathBuf::from(&item.path));
+        let branch_name = get_repository_active_branch(&repository);
+        lines.0.push(Span::from(item.folder_name.clone()));
+        lines.0.push(Span::from(" ".repeat((chunk.width - (branch_name.len() as u16) - (item.folder_name.len() as u16) - 5) as usize)));
+        lines.0.push(Span::raw("("));
+        lines.0.push(Span::from(branch_name));
+        lines.0.push(Span::raw(")"));
+        line_color = Color::Green
+    } else {
+        lines.0.push(Span::from(item.folder_name.clone()));
+    }
+    ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
 }
