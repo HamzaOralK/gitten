@@ -1,17 +1,17 @@
 use std::{io};
-use std::path::{PathBuf};
+use std::fmt::Display;
 use std::time::{Duration, Instant};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode};
 use tui::backend::Backend;
 use tui::{Frame, Terminal};
-use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use tui::widgets::{Block, List, ListItem, Paragraph};
 use tui::layout::{Alignment, Constraint, Corner, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use crate::{App};
-use crate::app::AlfredRepository;
-use crate::utility::{get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags};
+use crate::app::{AlfredRepository, Selection};
+use crate::utility::{convert_to_list_item, create_block, create_block_with_title};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
@@ -33,8 +33,11 @@ pub fn run_app<B: Backend>(
                 match key.code {
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Left => app.repositories.unselect(),
-                    KeyCode::Down => app.repositories.next(),
-                    KeyCode::Up => app.repositories.previous(),
+                    KeyCode::Down => app.next(),
+                    KeyCode::Up => app.previous(),
+                    KeyCode::Char('r') => app.change_selection(Selection::REPOSITORIES),
+                    KeyCode::Char('t') => app.change_selection(Selection::TAGS),
+                    KeyCode::Char('b') => app.change_selection(Selection::BRANCHES),
                     _ => {}
                 }
             }
@@ -72,12 +75,6 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         )
         .split(chunks[0]);
 
-    let create_block = || {
-        let b = Block::default();
-        b.borders(Borders::NONE)
-            .style(Style::default().bg(Color::Black).fg(Color::White))
-    };
-
     // Files & folders
     let items: Vec<ListItem> = app
         .repositories
@@ -95,23 +92,11 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
             Style::default()
                 .add_modifier(Modifier::BOLD),
         )
-        .highlight_symbol(">> ");
+        .highlight_symbol("> ");
     f.render_stateful_widget(items, main_chunks[0], &mut app.repositories.state);
 
-    let temp_value = AlfredRepository{
-        path: "".to_string(),
-        folder_name: "".to_string(),
-        is_repository: false
-    };
-    let selected_object = match app.repositories.state.selected() {
-        Some(selected) => &app.repositories.items[selected],
-        _ => &temp_value
-    };
-    //Get selected repository
-    let repository = get_repository(PathBuf::from(&selected_object.path));
-
     // Info at the bottom
-    let paragraph = Paragraph::new(format!("{}",  selected_object.path))
+    let paragraph = Paragraph::new(format!("{}",  app.selected_repository_path))
         .style(Style::default().bg(Color::White).fg(Color::Black))
         .block(create_block())
         .alignment(Alignment::Left);
@@ -130,32 +115,37 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .split(main_chunks[1]);
 
     // Tags
-    let tag_list = List::new(get_repository_tags(&repository))
-        .block(Block::default().borders(Borders::ALL).title("Tags"))
-        .start_corner(Corner::TopLeft);
-    f.render_widget(tag_list, right_chunks[0]);
+
+    let tag_list = create_selection_list(&app.tags.items, create_block_with_title(&app, Selection::TAGS));
+    f.render_stateful_widget(tag_list, right_chunks[0], &mut app.tags.state);
 
     // Branches
-    let branch_list = List::new(get_repository_branches(&repository))
-        .block(Block::default().borders(Borders::ALL).title("Branches"))
-        .start_corner(Corner::TopLeft);
-    f.render_widget(branch_list, right_chunks[1]);
+    let branch_list = create_selection_list(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES));
+    f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 }
 
 fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, chunk: &'a Rect) -> ListItem<'a> {
     let mut lines: Spans = Spans::default();
     let mut line_color = Color::Black;
     if item.is_repository {
-        let repository = get_repository(PathBuf::from(&item.path));
-        let branch_name = get_repository_active_branch(&repository);
         lines.0.push(Span::from(item.folder_name.clone()));
-        lines.0.push(Span::from(" ".repeat((chunk.width - (branch_name.len() as u16) - (item.folder_name.len() as u16) - 5) as usize)));
+        lines.0.push(Span::from(" ".repeat((chunk.width - (item.active_branch_name.len() as u16) - (item.folder_name.len() as u16) - 6) as usize)));
         lines.0.push(Span::raw("("));
-        lines.0.push(Span::from(branch_name));
+        lines.0.push(Span::from(item.active_branch_name.to_string()));
         lines.0.push(Span::raw(")"));
         line_color = Color::Green
     } else {
         lines.0.push(Span::from(item.folder_name.clone()));
     }
     ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
+}
+
+fn create_selection_list<'a, T: Display>(v: &'a Vec<T>, b: Block<'a>) -> List<'a > {
+    List::new(convert_to_list_item(v))
+        .block(b)
+        .start_corner(Corner::TopLeft)
+        .highlight_style(
+            Style::default().add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ")
 }

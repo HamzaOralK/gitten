@@ -1,8 +1,11 @@
 use std::fmt::Display;
 use std::path::PathBuf;
 use git2::{Repository};
+use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::ListItem;
+use tui::widgets::{Block, Borders, ListItem};
+use crate::App;
+use crate::app::Selection;
 
 pub fn is_repository(path: PathBuf) -> bool {
     match Repository::open(path) {
@@ -18,7 +21,7 @@ pub fn get_repository(path: PathBuf) -> Option<Repository>{
     }
 }
 
-pub fn get_repository_tags(repository: &Option<Repository>) -> Vec<ListItem> {
+pub fn get_repository_tags(repository: &Option<Repository>) -> Vec<String> {
     let mut tags = Vec::new();
     if let Some(r) = repository {
         r.tag_names(Some("[0-99999999].[0-99999999].[0-99999999]")).iter().for_each(|f| {
@@ -29,10 +32,10 @@ pub fn get_repository_tags(repository: &Option<Repository>) -> Vec<ListItem> {
             });
         });
     }
-    convert_to_list_item(tags)
+    tags
 }
 
-pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<ListItem> {
+pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<String> {
     let mut branches_string = Vec::new();
 
     if let Some(r) = repository {
@@ -46,7 +49,7 @@ pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<ListItem>
             branches_string.push(b1);
         });
     }
-    convert_to_list_item(branches_string)
+    branches_string
 }
 
 pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
@@ -57,7 +60,7 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     branch_id
 }
 
-fn convert_to_list_item<T: Display>(iterator: Vec<T>) -> Vec<ListItem<'static>> {
+pub fn convert_to_list_item<T: Display>(iterator: &Vec<T>) -> Vec<ListItem<'static>> {
     iterator.iter()
         .rev()
         .map(|f| {
@@ -68,4 +71,24 @@ fn convert_to_list_item<T: Display>(iterator: Vec<T>) -> Vec<ListItem<'static>> 
             ])
         })
         .collect()
+}
+
+pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
+    let b = Block::default();
+
+    let style = if app.selection == selection {
+        Style::default().bg(Color::White).fg(Color::Black).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().bg(Color::Black).fg(Color::White)
+    };
+
+    b.borders(Borders::ALL)
+        .title(Spans::from(vec![
+            Span::styled(selection.to_string(), style)
+        ]))
+}
+
+pub fn create_block() -> Block<'static> {
+    let b = Block::default();
+    b.borders(Borders::NONE)
 }
