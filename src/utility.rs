@@ -93,8 +93,13 @@ pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, ch
     let mut lines: Spans = Spans::default();
     let mut line_color = Color::Black;
     if item.is_repository {
+        let repeat_time = if chunk.width > ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6) {
+            chunk.width - ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6)
+        } else {
+            0
+        };
         lines.0.push(Span::from(item.folder_name.clone()));
-        lines.0.push(Span::from(" ".repeat((chunk.width - (item.active_branch_name.len() as u16) - (item.folder_name.len() as u16) - 6) as usize)));
+        lines.0.push(Span::from(" ".repeat((repeat_time) as usize)));
         lines.0.push(Span::raw("("));
         lines.0.push(Span::from(item.active_branch_name.to_string()));
         lines.0.push(Span::raw(")"));

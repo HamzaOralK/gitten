@@ -44,7 +44,8 @@ impl App {
         let mut content = Vec::new();
         let path = std::env::args().nth(1).unwrap_or("./".to_string());
 
-        generate_repository_content(path, &mut content);
+        App::generate_repository_content(path, &mut content);
+
         App {
             selection: Selection::REPOSITORIES,
             selected_repository_path: "".to_string(),
@@ -102,27 +103,27 @@ impl App {
             self.branches = StatefulList::with_items(get_repository_branches(&repository));
         }
     }
-}
 
-fn generate_repository_content(path: String, content: &mut Vec<AlfredRepository>) {
-    let paths = fs::read_dir(path).unwrap();
+    fn generate_repository_content(path: String, content: &mut Vec<AlfredRepository>) {
+        let paths = fs::read_dir(path).unwrap();
 
-    paths.for_each(|p| {
-        let dir = p.unwrap();
-        if !dir.file_name().to_str().unwrap().starts_with(".") {
-            let repository = get_repository(PathBuf::from(&dir.path()));
-            let branch_name = get_repository_active_branch(&repository);
-            content.push(
-                AlfredRepository {
-                    path: dir.path().to_str().unwrap().to_string(),
-                    folder_name: dir.file_name().into_string().unwrap(),
-                    active_branch_name: branch_name,
-                    is_repository: is_repository(dir.path())
-                }
-            );
-        }
-    });
-    content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
+        paths.for_each(|p| {
+            let dir = p.unwrap();
+            if !dir.file_name().to_str().unwrap().starts_with(".") {
+                let repository = get_repository(PathBuf::from(&dir.path()));
+                let branch_name = get_repository_active_branch(&repository);
+                content.push(
+                    AlfredRepository {
+                        path: dir.path().to_str().unwrap().to_string(),
+                        folder_name: dir.file_name().into_string().unwrap(),
+                        active_branch_name: branch_name,
+                        is_repository: is_repository(dir.path())
+                    }
+                );
+            }
+        });
+        content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
+    }
 }
 
 pub struct StatefulList<T> {

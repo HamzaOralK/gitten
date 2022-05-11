@@ -93,14 +93,6 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .highlight_symbol("> ");
     f.render_stateful_widget(items, main_chunks[0], &mut app.repositories.state);
 
-    // Info at the bottom
-    let paragraph = Paragraph::new(format!("{}",  app.selected_repository_path))
-        .style(Style::default().bg(Color::White).fg(Color::Black))
-        .block(create_block())
-        .alignment(Alignment::Left);
-
-    f.render_widget(paragraph, chunks[1]);
-
     //Branches and Tags screens
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -113,11 +105,17 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .split(main_chunks[1]);
 
     // Tags
-
     let tag_list = create_selection_list_from_vector(&app.tags.items, create_block_with_title(&app, Selection::TAGS));
     f.render_stateful_widget(tag_list, right_chunks[0], &mut app.tags.state);
 
     // Branches
     let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES));
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
+
+    // Info at the bottom
+    let paragraph = Paragraph::new(format!("{}",  app.selected_repository_path))
+        .style(Style::default().bg(Color::White).fg(Color::Black))
+        .block(create_block())
+        .alignment(Alignment::Left);
+    f.render_widget(paragraph, chunks[1]);
 }
