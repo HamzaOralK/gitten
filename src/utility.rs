@@ -1,11 +1,12 @@
 use std::fmt::Display;
 use std::path::PathBuf;
 use git2::{Repository};
+use tui::layout::{Corner, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, ListItem};
+use tui::widgets::{Block, Borders, List, ListItem};
 use crate::App;
-use crate::app::Selection;
+use crate::app::{AlfredRepository, Selection};
 
 pub fn is_repository(path: PathBuf) -> bool {
     match Repository::open(path) {
@@ -86,6 +87,32 @@ pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static
         .title(Spans::from(vec![
             Span::styled(selection.to_string(), style)
         ]))
+}
+
+pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, chunk: &'a Rect) -> ListItem<'a> {
+    let mut lines: Spans = Spans::default();
+    let mut line_color = Color::Black;
+    if item.is_repository {
+        lines.0.push(Span::from(item.folder_name.clone()));
+        lines.0.push(Span::from(" ".repeat((chunk.width - (item.active_branch_name.len() as u16) - (item.folder_name.len() as u16) - 6) as usize)));
+        lines.0.push(Span::raw("("));
+        lines.0.push(Span::from(item.active_branch_name.to_string()));
+        lines.0.push(Span::raw(")"));
+        line_color = Color::Green
+    } else {
+        lines.0.push(Span::from(item.folder_name.clone()));
+    }
+    ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
+}
+
+pub fn create_selection_list_from_vector<'a, T: Display>(v: &'a Vec<T>, b: Block<'a>) -> List<'a > {
+    List::new(convert_to_list_item(v))
+        .block(b)
+        .start_corner(Corner::TopLeft)
+        .highlight_style(
+            Style::default().add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ")
 }
 
 pub fn create_block() -> Block<'static> {
