@@ -61,7 +61,7 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     branch_id
 }
 
-pub fn convert_to_list_item<T: Display>(iterator: &Vec<T>) -> Vec<ListItem<'static>> {
+pub fn convert_vector_to_list_item_vector<T: Display>(iterator: &Vec<T>) -> Vec<ListItem<'static>> {
     iterator.iter()
         .rev()
         .map(|f| {
@@ -72,6 +72,16 @@ pub fn convert_to_list_item<T: Display>(iterator: &Vec<T>) -> Vec<ListItem<'stat
             ])
         })
         .collect()
+}
+
+pub fn create_selection_list_from_vector<'a, T: Display>(v: &'a Vec<T>, b: Block<'a>) -> List<'a > {
+    List::new(convert_vector_to_list_item_vector(v))
+        .block(b)
+        .start_corner(Corner::TopLeft)
+        .highlight_style(
+            Style::default().add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol("> ")
 }
 
 pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
@@ -108,16 +118,6 @@ pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, ch
         lines.0.push(Span::from(item.folder_name.clone()));
     }
     ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
-}
-
-pub fn create_selection_list_from_vector<'a, T: Display>(v: &'a Vec<T>, b: Block<'a>) -> List<'a > {
-    List::new(convert_to_list_item(v))
-        .block(b)
-        .start_corner(Corner::TopLeft)
-        .highlight_style(
-            Style::default().add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ")
 }
 
 pub fn create_block() -> Block<'static> {
