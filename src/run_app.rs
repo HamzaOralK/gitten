@@ -85,7 +85,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
 
     // Repositories
     let items = List::new(items)
-        .block(create_block().title("Repositories"))
+        .block(create_block_with_title(&app, Selection::REPOSITORIES))
         .highlight_style(
             Style::default()
                 .add_modifier(Modifier::BOLD),
