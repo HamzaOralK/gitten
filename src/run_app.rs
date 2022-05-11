@@ -113,7 +113,12 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
     // Info at the bottom
-    let paragraph = Paragraph::new(format!("{}",  app.selected_repository_path))
+    let paragraph = Paragraph::new(format!("{}",
+        match app.repositories.state.selected() {
+            Some(selected) => &app.repositories.items[selected].path,
+            _ => ""
+        }
+    ))
         .style(Style::default().bg(Color::White).fg(Color::Black))
         .block(create_block())
         .alignment(Alignment::Left);

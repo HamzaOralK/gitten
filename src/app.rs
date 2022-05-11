@@ -32,7 +32,6 @@ pub struct AlfredRepository {
 
 pub struct App {
     pub selection: Selection,
-    pub selected_repository_path: String,
     pub repositories: StatefulList<AlfredRepository>,
     pub branches: StatefulList<String>,
     pub tags: StatefulList<String>,
@@ -48,7 +47,6 @@ impl App {
 
         App {
             selection: Selection::REPOSITORIES,
-            selected_repository_path: "".to_string(),
             repositories: StatefulList::with_items(content),
             branches: StatefulList::with_items(vec![]),
             tags: StatefulList::with_items(vec![]),
@@ -96,7 +94,6 @@ impl App {
                 Some(selected) => &self.repositories.items[selected],
                 _ => &temp_value
             };
-            self.selected_repository_path = selected_object.path.to_string();
             //Get selected repository
             let repository = get_repository(PathBuf::from(&selected_object.path));
             self.tags = StatefulList::with_items(get_repository_tags(&repository));
