@@ -3,8 +3,15 @@ use std::{fs};
 use tui::widgets::{ListState};
 use crate::utility;
 
+#[derive(Debug, Clone)]
+pub struct AlfredRepository {
+    pub path: String,
+    pub folder_name: String,
+    pub is_repository: bool
+}
+
 pub struct App {
-    pub repositories: StatefulList<(String, String, bool)>,
+    pub repositories: StatefulList<AlfredRepository>,
     pub tick: u64
 }
 
@@ -76,20 +83,20 @@ impl<T: Clone> StatefulList<T> {
     }
 }
 
-fn generate_repository_content(path: String, content: &mut Vec<(String, String, bool)>) {
+fn generate_repository_content(path: String, content: &mut Vec<AlfredRepository>) {
     let paths = fs::read_dir(path).unwrap();
 
     paths.for_each(|p| {
         let dir = p.unwrap();
         if !dir.file_name().to_str().unwrap().starts_with(".") {
             content.push(
-                (
-                    dir.path().to_str().unwrap().to_string(),
-                    dir.file_name().into_string().unwrap(),
-                    is_repository(dir.path())
-                )
+                AlfredRepository {
+                    path: dir.path().to_str().unwrap().to_string(),
+                    folder_name: dir.file_name().into_string().unwrap(),
+                    is_repository: is_repository(dir.path())
+                }
             );
         }
     });
-    content.sort();
+    content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
 }

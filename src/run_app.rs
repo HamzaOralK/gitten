@@ -10,6 +10,7 @@ use tui::layout::{Alignment, Constraint, Corner, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Spans};
 use crate::{App};
+use crate::app::AlfredRepository;
 use crate::utility::{get_repository, get_repository_branches, get_repository_tags};
 
 pub fn run_app<B: Backend>(
@@ -83,8 +84,8 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .items
         .iter()
         .map(|i| {
-            let lines = vec![Spans::from(i.1.clone())];
-            if i.2 {
+            let lines = vec![Spans::from(i.folder_name.clone())];
+            if i.is_repository {
                 ListItem::new(lines).style(Style::default().fg(Color::White).bg(Color::Green))
             } else {
                 ListItem::new(lines).style(Style::default().fg(Color::White).bg(Color::Black))
@@ -102,14 +103,18 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .highlight_symbol(">> ");
     f.render_stateful_widget(items, main_chunks[0], &mut app.repositories.state);
 
-    let temp_value = &("".to_string(), "".to_string(), false);
+    let temp_value = AlfredRepository{
+        path: "".to_string(),
+        folder_name: "".to_string(),
+        is_repository: false
+    };
     let selected_object = match app.repositories.state.selected() {
         Some(selected) => &app.repositories.items[selected],
-        _ => temp_value
+        _ => &temp_value
     };
 
     // Info at the bottom
-    let paragraph = Paragraph::new(format!("{}",  selected_object.0))
+    let paragraph = Paragraph::new(format!("{}",  selected_object.path))
         .style(Style::default().bg(Color::White).fg(Color::Black))
         .block(create_block())
         .alignment(Alignment::Left);
@@ -127,7 +132,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         )
         .split(main_chunks[1]);
 
-    let repository = get_repository(PathBuf::from(&selected_object.0));
+    let repository = get_repository(PathBuf::from(&selected_object.path));
     let tag_list = List::new(get_repository_tags(&repository))
         .block(Block::default().borders(Borders::ALL).title("Tags"))
         .start_corner(Corner::TopLeft);
