@@ -19,7 +19,7 @@ pub fn is_repository(path: PathBuf) -> bool {
     }
 }
 
-pub fn get_repository(path: PathBuf) -> Option<Repository>{
+pub fn get_repository(path: &String) -> Option<Repository> {
     match Repository::open(path) {
         Ok(repo) => Some(repo),
         Err(_e) => None

@@ -38,7 +38,7 @@ pub fn run_app<B: Backend>(
                         KeyCode::Char('t') => app.change_selection(Selection::TAGS),
                         KeyCode::Char('b') => app.change_selection(Selection::BRANCHES),
                         KeyCode::Char(':') => {
-                            if let Some(_) = app.repositories.state.selected() {
+                            if let Some(_) = &app.repositories.state.selected() {
                                 app.input_mode = InputMode::EDITING;
                             };
                         },
@@ -50,6 +50,9 @@ pub fn run_app<B: Backend>(
                         },
                         KeyCode::Backspace => {
                             app.input.pop();
+                        },
+                        KeyCode::Enter => {
+                            app.process_input();
                         },
                         KeyCode::Esc => {
                             app.input = String::new();
@@ -142,7 +145,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
                 .style(Style::default().bg(Color::White).fg(Color::Black))
                 .block(create_block())
                 .alignment(Alignment::Left),
-        InputMode::EDITING => Paragraph::new(format!("{}", &app.input))
+        InputMode::EDITING => Paragraph::new(format!("{} > {}", &app.selection.to_string(), &app.input))
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left)

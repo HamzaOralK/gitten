@@ -3,7 +3,6 @@
 use utility::is_repository;
 use std::{fmt, fs};
 use std::fmt::Debug;
-use std::path::PathBuf;
 use tui::widgets::{ListState};
 use crate::utility;
 use crate::utility::{get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags};
@@ -144,15 +143,63 @@ impl App {
         self.update_repository_details();
     }
 
+    pub fn process_input(&mut self) {
+        let input: String = self.input.drain(..).collect();
+
+        let commands: Vec<String> = input.split_whitespace().map(|f| {
+            f.to_owned()
+        }).collect();
+
+        if self.get_selected_repository().is_repository {
+            match self.selection {
+                Selection::REPOSITORIES => {
+                    match commands[0].as_ref() {
+                        "co" => { let _ = self.checkout_to_branch(commands[1].to_string()); },
+                        "tag" => { let _ = self.create_tag(commands[1].to_string()); },
+                        _ => { print!("Unknown command!") }
+                    }
+                },
+                _ => {}
+            }
+            self.input_mode = InputMode::NORMAL;
+        }
+    }
+
+    fn checkout_to_branch(&mut self, branch_name: String) {
+        if let Some(repo) = get_repository(&self.get_selected_repository().path) {
+            let head = repo.head().unwrap();
+            let oid = head.target().unwrap();
+            let commit = repo.find_commit(oid).unwrap();
+            let branch_name = branch_name.as_str();
+            let _branch = repo.branch(
+                branch_name,
+                &commit,
+                false,
+            );
+            let obj = repo.revparse_single(&("refs/heads/".to_owned() + branch_name)).unwrap();
+            let _result = repo.checkout_tree(
+                &obj,
+                None
+            );
+            let _result = repo.set_head(&("refs/heads/".to_owned() + branch_name));
+            self.get_selected_repository().active_branch_name = branch_name.to_string();
+            self.update_repository_details();
+        }
+    }
+
+    fn create_tag(&mut self, tag_name: String) {
+        if let Some(repo) = get_repository(&self.get_selected_repository().path) {
+            let obj = repo.revparse_single(&("refs/heads/".to_owned() + &self.get_selected_repository().active_branch_name)).unwrap();
+            let sig = repo.signature().unwrap();
+            repo.tag(tag_name.as_str(), &obj, &sig, "", true).unwrap();
+            self.update_repository_details();
+        }
+    }
+
     fn update_repository_details(&mut self) {
         if self.selection == Selection::REPOSITORIES {
-            let temp_value = AlfredRepository::default();
-            let selected_repository = match self.repositories.state.selected() {
-                Some(selected) => &self.repositories.items[selected],
-                _ => &temp_value
-            };
             //Get selected repository
-            let rep = get_repository(PathBuf::from(&selected_repository.path));
+            let rep = get_repository(&self.get_selected_repository().path);
             self.tags = StatefulList::with_items(get_repository_tags(&rep));
             self.branches = StatefulList::with_items(get_repository_branches(&rep));
         }
@@ -164,7 +211,7 @@ impl App {
         paths.for_each(|p| {
             let dir = p.unwrap();
             if !dir.file_name().to_str().unwrap().starts_with(".") {
-                let repository = get_repository(PathBuf::from(&dir.path()));
+                let repository = get_repository(&dir.path().to_str().unwrap().to_string());
                 let active_branch_name = get_repository_active_branch(&repository);
                 content.push(
                     AlfredRepository {
@@ -179,14 +226,7 @@ impl App {
         content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
     }
 
-    pub fn change_head(&mut self) {
-        if let Some(r) = get_repository(PathBuf::from(&self.repositories.items[self.repositories.state.selected().unwrap()].path)) {
-            match r.set_head("refs/heads/master") {
-                Ok(()) => {
-                    self.repositories.items[self.repositories.state.selected().unwrap()].active_branch_name = "master".to_string()
-                },
-                Err(e) => println!("{:?}",e)
-            };
-        }
+    fn get_selected_repository(&mut self) -> &mut AlfredRepository {
+        &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
 }
