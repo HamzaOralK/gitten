@@ -1,10 +1,14 @@
+#![allow(dead_code)]
+
 use std::fmt::Display;
 use std::path::PathBuf;
 use git2::{Repository};
-use tui::layout::{Corner, Rect};
+use tui::backend::Backend;
+use tui::Frame;
+use tui::layout::{Constraint, Corner, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, List, ListItem};
+use tui::widgets::{Block, Borders, Clear, List, ListItem};
 use crate::App;
 use crate::app::{AlfredRepository, Selection};
 
@@ -84,24 +88,9 @@ pub fn create_selection_list_from_vector<'a, T: Display>(v: &'a Vec<T>, b: Block
         .highlight_symbol("> ")
 }
 
-pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
-    let b = Block::default();
-
-    let style = if app.selection == selection {
-        Style::default().bg(Color::White).fg(Color::Black).add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().bg(Color::Black).fg(Color::White)
-    };
-
-    b.borders(Borders::ALL)
-        .title(Spans::from(vec![
-            Span::styled(selection.to_string(), style)
-        ]))
-}
-
 pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, chunk: &'a Rect) -> ListItem<'a> {
     let mut lines: Spans = Spans::default();
-    let mut line_color = Color::Black;
+    let mut line_color = Color::Reset;
     if item.is_repository {
         let repeat_time = if chunk.width > ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6) {
             chunk.width - ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6)
@@ -120,7 +109,56 @@ pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, ch
     ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
 }
 
+pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
+    let b = Block::default();
+
+    let style = if app.selection == selection {
+        Style::default().bg(Color::White).fg(Color::Black).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().bg(Color::Black).fg(Color::White)
+    };
+
+    b.borders(Borders::ALL)
+        .title(Spans::from(vec![
+            Span::styled(selection.to_string(), style)
+        ]))
+}
+
 pub fn create_block() -> Block<'static> {
     let b = Block::default();
     b.borders(Borders::NONE)
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+                .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+                .as_ref(),
+        )
+        .split(popup_layout[1])[1]
+}
+
+pub fn show_popup<B: Backend>(f: &mut Frame<B>, size: Rect) {
+    let area = centered_rect(60, 20, size);
+    let block = Block::default().title("Anan").borders(Borders::ALL);
+
+    f.render_widget(Clear, area);
+    f.render_widget(block, area);
 }

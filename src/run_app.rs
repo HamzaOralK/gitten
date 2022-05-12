@@ -8,7 +8,7 @@ use tui::widgets::{List, ListItem, Paragraph};
 use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use crate::{App};
-use crate::app::{Selection};
+use crate::app::{InputMode, Selection};
 use crate::utility::{convert_alfred_repository_to_list_item, create_block, create_block_with_title, create_selection_list_from_vector};
 
 pub fn run_app<B: Backend>(
@@ -28,15 +28,35 @@ pub fn run_app<B: Backend>(
 
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Left => app.repositories.unselect(),
-                    KeyCode::Down => app.next(),
-                    KeyCode::Up => app.previous(),
-                    KeyCode::Char('r') => app.change_selection(Selection::REPOSITORIES),
-                    KeyCode::Char('t') => app.change_selection(Selection::TAGS),
-                    KeyCode::Char('b') => app.change_selection(Selection::BRANCHES),
-                    _ => {}
+                match app.input_mode {
+                    InputMode::NORMAL=> match key.code {
+                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Left => app.repositories.unselect(),
+                        KeyCode::Down => app.next(),
+                        KeyCode::Up => app.previous(),
+                        KeyCode::Char('r') => app.change_selection(Selection::REPOSITORIES),
+                        KeyCode::Char('t') => app.change_selection(Selection::TAGS),
+                        KeyCode::Char('b') => app.change_selection(Selection::BRANCHES),
+                        KeyCode::Char(':') => {
+                            if let Some(_) = app.repositories.state.selected() {
+                                app.input_mode = InputMode::EDITING;
+                            };
+                        },
+                        _ => {}
+                    },
+                    InputMode::EDITING => match key.code {
+                        KeyCode::Char(c) => {
+                            app.input.push(c);
+                        },
+                        KeyCode::Backspace => {
+                            app.input.pop();
+                        },
+                        KeyCode::Esc => {
+                            app.input = String::new();
+                            app.input_mode = InputMode::NORMAL;
+                        }
+                        _ => {}
+                    }
                 }
             }
         }
@@ -56,8 +76,8 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Percentage(95),
-                Constraint::Percentage(5)
+                Constraint::Percentage(97),
+                Constraint::Percentage(3)
             ]
         )
         .split(size);
@@ -113,14 +133,19 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
     // Info at the bottom
-    let paragraph = Paragraph::new(format!("{}",
-        match app.repositories.state.selected() {
-            Some(selected) => &app.repositories.items[selected].path,
-            _ => ""
-        }
-    ))
-        .style(Style::default().bg(Color::White).fg(Color::Black))
-        .block(create_block())
-        .alignment(Alignment::Left);
+    let paragraph = match app.input_mode {
+        InputMode::NORMAL => Paragraph::new(format!("{}", match app.repositories.state.selected() {
+                    Some(selected) => format!("{}", &app.repositories.items[selected].path),
+                    _ => String::new()
+                }
+            ))
+                .style(Style::default().bg(Color::White).fg(Color::Black))
+                .block(create_block())
+                .alignment(Alignment::Left),
+        InputMode::EDITING => Paragraph::new(format!("{}", &app.input))
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(create_block())
+            .alignment(Alignment::Left)
+    };
     f.render_widget(paragraph, chunks[1]);
 }
