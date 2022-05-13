@@ -25,3 +25,7 @@ Create a tag from active branch:
 
 ## Showcase
 ![](alfred.gif)
+
+## TODO
+- [] Multiple repository selection and bulk branch and tag creation
+- [] Push to remote with tags or not
