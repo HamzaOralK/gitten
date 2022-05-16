@@ -1,8 +1,7 @@
-#![allow(dead_code)]
-
 use utility::is_repository;
 use std::{fmt, fs};
 use std::fmt::Debug;
+use git2::{Cred, CredentialType, PushOptions};
 use tui::widgets::{ListState};
 use crate::utility;
 use crate::utility::{get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags};
@@ -59,10 +58,14 @@ impl<T: Clone> StatefulList<T> {
     pub fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if i >= self.items.len() - 1 {
-                    0
+                if self.items.len() > 0 {
+                    if i >= self.items.len() - 1 {
+                        0
+                    } else {
+                        i + 1
+                    }
                 } else {
-                    i + 1
+                    0
                 }
             }
             None => 0,
@@ -73,13 +76,17 @@ impl<T: Clone> StatefulList<T> {
     pub fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if i == 0 {
-                    self.items.len() - 1
+                if self.items.len() > 0 {
+                    if i == 0 {
+                        self.items.len() - 1
+                    } else {
+                        i - 1
+                    }
                 } else {
-                    i - 1
+                    0
                 }
             }
-            None => 0,
+            None => 0
         };
         self.state.select(Some(i));
     }
@@ -95,7 +102,8 @@ pub struct App {
     pub branches: StatefulList<String>,
     pub tags: StatefulList<String>,
     pub input: String,
-    pub input_mode: InputMode
+    pub input_mode: InputMode,
+    pub message: Option<String>,
 }
 
 impl App {
@@ -111,7 +119,8 @@ impl App {
             branches: StatefulList::with_items(vec![]),
             tags: StatefulList::with_items(vec![]),
             input: String::new(),
-            input_mode: InputMode::NORMAL
+            input_mode: InputMode::NORMAL,
+            message: None
         }
     }
 
@@ -120,7 +129,7 @@ impl App {
     }
 
     pub fn on_tick(&mut self) {
-        ()
+        self.message = None;
     }
 
     pub fn next(&mut self) {
@@ -159,9 +168,42 @@ impl App {
                         _ => { print!("Unknown command!") }
                     }
                 },
-                _ => {}
+                Selection::BRANCHES => {
+                    match commands[0].as_ref() {
+                        "p" => { let _ = self.push_origin(commands[1].to_string(), true); },
+                        _ => { print!("Unknown command!") }
+                    }
+                },
+                Selection::TAGS => {
+                    match commands[0].as_ref() {
+                        "p" => { let _ = self.push_origin(commands[1].to_string(), false); },
+                        _ => { print!("Unknown command!") }
+                    }
+                }
             }
             self.input_mode = InputMode::NORMAL;
+        }
+    }
+
+    fn push_origin(&mut self, origin: String, is_branch: bool) {
+        let mut callbacks = git2::RemoteCallbacks::new();
+        callbacks.credentials(git_credentials_callback);
+
+        if let Some(repo) = get_repository(&self.get_selected_repository().path) {
+            let mut opts = PushOptions::new();
+            opts.remote_callbacks(callbacks);
+            let mut remote = repo.find_remote(origin.as_str()).unwrap();
+
+            let ref_spec = if is_branch {
+                format!("refs/heads/{}", &self.branches.items[self.branches.state.selected().unwrap()].to_string())
+            } else {
+                format!("refs/tags/{}", &self.tags.items[self.tags.state.selected().unwrap()].to_string())
+            };
+
+            match remote.push(&[&ref_spec], Some(&mut opts)) {
+                Ok(()) => self.set_message(Some(String::from("Push is successful!"))),
+                Err(e) => { self.set_message(Some(format!("Error: {}", e.message()))) }
+            };
         }
     }
 
@@ -177,21 +219,27 @@ impl App {
                 false,
             );
             let obj = repo.revparse_single(&("refs/heads/".to_owned() + branch_name)).unwrap();
-            let _result = repo.checkout_tree(
-                &obj,
-                None
-            );
-            let _result = repo.set_head(&("refs/heads/".to_owned() + branch_name));
-            self.get_selected_repository().active_branch_name = branch_name.to_string();
-            self.update_repository_details();
+            match repo.checkout_tree(&obj, None) {
+                Ok(()) => {
+                    let _result = repo.set_head(&("refs/heads/".to_owned() + branch_name));
+                    self.get_selected_repository().active_branch_name = branch_name.to_string();
+                    self.update_repository_details();
+                    self.set_message(Some(String::from("Checkout is successful!")));
+                },
+                Err(e) => {
+                    self.set_message(Some(format!("Error: {}", e.message())))
+                }
+            };
         }
     }
 
     fn create_tag(&mut self, tag_name: String) {
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
             let obj = repo.revparse_single(&("refs/heads/".to_owned() + &self.get_selected_repository().active_branch_name)).unwrap();
-            let sig = repo.signature().unwrap();
-            repo.tag(tag_name.as_str(), &obj, &sig, "", true).unwrap();
+            match repo.tag_lightweight(tag_name.as_str(), &obj, true) {
+                Ok(_oid) => { self.set_message(Some(String::from("Tag creation is successful!"))) },
+                Err(e) => { self.set_message(Some(format!("Error: {}", e.message())))  }
+            };
             self.update_repository_details();
         }
     }
@@ -200,7 +248,9 @@ impl App {
         if self.selection == Selection::REPOSITORIES {
             //Get selected repository
             let rep = get_repository(&self.get_selected_repository().path);
+            self.tags.unselect();
             self.tags = StatefulList::with_items(get_repository_tags(&rep));
+            self.branches.unselect();
             self.branches = StatefulList::with_items(get_repository_branches(&rep));
         }
     }
@@ -229,4 +279,24 @@ impl App {
     fn get_selected_repository(&mut self) -> &mut AlfredRepository {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
+
+    fn set_message(&mut self, message: Option<String>) {
+        self.message = message
+    }
+}
+
+fn git_credentials_callback(
+    _url: &str,
+    user_from_url: Option<&str>,
+    cred_types_allowed: CredentialType,
+) -> Result<Cred, git2::Error> {
+    let user = user_from_url.unwrap();
+
+    if cred_types_allowed.contains(CredentialType::SSH_KEY) {
+        let private_key = dirs::home_dir().unwrap().join(".ssh").join("id_rsa");
+        let cred = Cred::ssh_key(user, None, &private_key, None);
+        return cred;
+    }
+
+    return Err(git2::Error::from_str("no credential option available"));
 }

@@ -135,13 +135,21 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
     let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES));
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
+    let message = match &app.message {
+        Some(message) => {
+            format!("{}", message)
+        },
+        None => {
+            format!("{}", match app.repositories.state.selected() {
+                Some(selected) => format!("{}", &app.repositories.items[selected].path),
+                _ => String::new()
+            })
+        }
+    };
+
     // Info at the bottom
     let paragraph = match app.input_mode {
-        InputMode::NORMAL => Paragraph::new(format!("{}", match app.repositories.state.selected() {
-                    Some(selected) => format!("{}", &app.repositories.items[selected].path),
-                    _ => String::new()
-                }
-            ))
+        InputMode::NORMAL => Paragraph::new(message)
                 .style(Style::default().bg(Color::White).fg(Color::Black))
                 .block(create_block())
                 .alignment(Alignment::Left),
