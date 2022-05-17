@@ -4,12 +4,12 @@ use crossterm::event;
 use crossterm::event::{Event, KeyCode};
 use tui::backend::Backend;
 use tui::{Frame, Terminal};
-use tui::widgets::{List, ListItem, Paragraph};
+use tui::widgets::{Paragraph};
 use tui::layout::{Alignment, Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
+use tui::style::{Color, Style};
 use crate::{App};
 use crate::app::{InputMode, Selection};
-use crate::utility::{convert_alfred_repository_to_list_item, create_block, create_block_with_title, create_selection_list_from_vector};
+use crate::utility::{create_block, create_block_with_title, create_selection_list_from_vector};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
@@ -96,25 +96,8 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         )
         .split(chunks[0]);
 
-    // Files & folders
-    let items: Vec<ListItem> = app
-        .repositories
-        .items
-        .iter()
-        .map(|i| {
-            convert_alfred_repository_to_list_item(i, &main_chunks[0])
-        })
-        .collect();
-
-    // Repositories
-    let items = List::new(items)
-        .block(create_block_with_title(&app, Selection::REPOSITORIES))
-        .highlight_style(
-            Style::default()
-                .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ");
-    f.render_stateful_widget(items, main_chunks[0], &mut app.repositories.state);
+    let repository_list = create_selection_list_from_vector(&app.repositories.items, create_block_with_title(&app, Selection::REPOSITORIES), Some(&main_chunks[0]));
+    f.render_stateful_widget(repository_list, main_chunks[0], &mut app.repositories.state);
 
     //Branches and Tags screens
     let right_chunks = Layout::default()
@@ -128,11 +111,11 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .split(main_chunks[1]);
 
     // Tags
-    let tag_list = create_selection_list_from_vector(&app.tags.items, create_block_with_title(&app, Selection::TAGS));
+    let tag_list = create_selection_list_from_vector(&app.tags.items, create_block_with_title(&app, Selection::TAGS), None);
     f.render_stateful_widget(tag_list, right_chunks[0], &mut app.tags.state);
 
     // Branches
-    let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES));
+    let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES), None);
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
     let message = match &app.message {

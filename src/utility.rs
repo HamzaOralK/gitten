@@ -6,7 +6,7 @@ use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, List, ListItem};
 use crate::App;
-use crate::app::{AlfredRepository, Selection};
+use crate::app::{ConvertableToListItem, Selection};
 
 pub fn is_repository(path: PathBuf) -> bool {
     match Repository::open(path) {
@@ -61,46 +61,21 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     branch_id
 }
 
-pub fn convert_vector_to_list_item_vector<T: Display>(iterator: &Vec<T>) -> Vec<ListItem<'static>> {
+pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(iterator: &'a Vec<T>, r: Option<&'a Rect>) -> Vec<ListItem<'a>> {
     iterator.iter()
         .map(|f| {
-            ListItem::new(vec![
-                Spans::from(vec![
-                    Span::raw(format!("{}", f))
-                ])
-            ])
+            f.convert_to_list_item(r)
         })
         .collect()
 }
 
-pub fn create_selection_list_from_vector<'a, T: Display>(v: &'a Vec<T>, b: Block<'a>) -> List<'a > {
-    List::new(convert_vector_to_list_item_vector(v))
+pub fn create_selection_list_from_vector<'a, T: Display + ConvertableToListItem>(v: &'a Vec<T>, b: Block<'a>, r: Option<&'a Rect>) -> List<'a > {
+    List::new(convert_vector_to_list_item_vector(v, r))
         .block(b)
         .highlight_style(
             Style::default().add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("> ")
-}
-
-pub fn convert_alfred_repository_to_list_item<'a>(item: &'a AlfredRepository, chunk: &'a Rect) -> ListItem<'a> {
-    let mut lines: Spans = Spans::default();
-    let mut line_color = Color::Reset;
-    if item.is_repository {
-        let repeat_time = if chunk.width > ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6) {
-            chunk.width - ((item.active_branch_name.len() as u16) + (item.folder_name.len() as u16) + 6)
-        } else {
-            0
-        };
-        lines.0.push(Span::from(item.folder_name.clone()));
-        lines.0.push(Span::from(" ".repeat((repeat_time) as usize)));
-        lines.0.push(Span::raw("("));
-        lines.0.push(Span::from(item.active_branch_name.to_string()));
-        lines.0.push(Span::raw(")"));
-        line_color = Color::Green
-    } else {
-        lines.0.push(Span::from(item.folder_name.clone()));
-    }
-    ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
 }
 
 pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
