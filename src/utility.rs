@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::path::PathBuf;
-use git2::{Repository};
+use git2::{Cred, CredentialType, Repository};
 use tui::layout::{Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
@@ -96,4 +96,20 @@ pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static
 pub fn create_block() -> Block<'static> {
     let b = Block::default();
     b.borders(Borders::NONE)
+}
+
+pub fn git_credentials_callback(
+    _url: &str,
+    user_from_url: Option<&str>,
+    cred_types_allowed: CredentialType,
+) -> Result<Cred, git2::Error> {
+    let user = user_from_url.unwrap();
+
+    if cred_types_allowed.contains(CredentialType::SSH_KEY) {
+        let private_key = dirs::home_dir().unwrap().join(".ssh").join("id_rsa");
+        let cred = Cred::ssh_key(user, None, &private_key, None);
+        return cred;
+    }
+
+    return Err(git2::Error::from_str("no credential option available"));
 }
