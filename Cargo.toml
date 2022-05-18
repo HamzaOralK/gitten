@@ -8,6 +8,5 @@ edition = "2021"
 [dependencies]
 tui = "0.18"
 crossterm = "0.23"
-rand = "0.8.5"
 git2 = "0.14"
 dirs = "4.0.0"
