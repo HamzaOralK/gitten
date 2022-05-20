@@ -34,4 +34,7 @@ selected branch or tag to the desired remote:
 
 ## TODO
 - [X] Push to remote with tags or not
+- [ ] Mark dirty head and allow to reset
+- [ ] Force pull
+- [ ] Pull
 - [ ] Multiple repository selection and bulk branch and tag creation
