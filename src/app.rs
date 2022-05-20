@@ -343,9 +343,12 @@ impl App {
         if let Some(r) = get_repository(&self.get_selected_repository().path) {
             let head = r.head().unwrap();
             let obj = r.find_object(head.target().unwrap(), None).unwrap();
-            r.reset(&obj, reset_type, None).unwrap_or_else(|_| {
-                self.set_message(Some(String::from("Could not reset!")))
-            });
+            match r.reset(&obj, reset_type, None) {
+                Ok(()) => {
+                    self.get_selected_repository().files_changed = 0
+                },
+                Err(_) => self.set_message(Some(String::from("Could not reset!")))
+            };
         }
     }
 
