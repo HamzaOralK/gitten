@@ -8,7 +8,7 @@ use tui::text::{Span, Spans};
 use tui::widgets::{ListItem, ListState};
 
 use crate::utility;
-use crate::utility::{get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
+use crate::utility::{fetch_repository_from_remote, get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -220,7 +220,8 @@ impl App {
                     match commands[0].as_ref() {
                         "co" => { let _ = self.checkout_to_branch(commands[1].to_string()); },
                         "tag" => { let _ = self.create_tag(commands[1].to_string()); },
-                        "rh" => { let _ = self.reset_repository(ResetType::Hard); },
+                        "rh" => { let _ = self.reset_selected_repository(ResetType::Hard); },
+                        "pull" => { let _ = self.pull_origin(commands[1].to_string()); }
                         _ => { print!("Unknown command!") }
                     }
                 },
@@ -261,6 +262,14 @@ impl App {
                 Err(e) => { self.set_message(Some(format!("Error: {}", e.message()))) }
             };
         }
+    }
+
+    fn pull_origin(&mut self, origin: String) {
+        let selected_repository = self.get_selected_repository();
+        let branch_name = selected_repository.active_branch_name.as_str().to_owned();
+        let repository = get_repository(&selected_repository.path).unwrap();
+
+        self.set_message(Some(fetch_repository_from_remote(origin.as_str(), branch_name.as_str(), &repository).unwrap()));
     }
 
     fn checkout_to_branch(&mut self, branch_name: String) {
@@ -339,7 +348,7 @@ impl App {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
 
-    fn reset_repository(&mut self, reset_type: ResetType) {
+    fn reset_selected_repository(&mut self, reset_type: ResetType) {
         if let Some(r) = get_repository(&self.get_selected_repository().path) {
             let head = r.head().unwrap();
             let obj = r.find_object(head.target().unwrap(), None).unwrap();
