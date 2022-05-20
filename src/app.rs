@@ -1,7 +1,7 @@
 use utility::is_repository;
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
-use git2::{PushOptions};
+use git2::{PushOptions, ResetType};
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
@@ -220,6 +220,7 @@ impl App {
                     match commands[0].as_ref() {
                         "co" => { let _ = self.checkout_to_branch(commands[1].to_string()); },
                         "tag" => { let _ = self.create_tag(commands[1].to_string()); },
+                        "rh" => { let _ = self.reset_repository(ResetType::Hard); },
                         _ => { print!("Unknown command!") }
                     }
                 },
@@ -336,6 +337,16 @@ impl App {
 
     fn get_selected_repository(&mut self) -> &mut AlfredRepositoryItem {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
+    }
+
+    fn reset_repository(&mut self, reset_type: ResetType) {
+        if let Some(r) = get_repository(&self.get_selected_repository().path) {
+            let head = r.head().unwrap();
+            let obj = r.find_object(head.target().unwrap(), None).unwrap();
+            r.reset(&obj, reset_type, None).unwrap_or_else(|_| {
+                self.set_message(Some(String::from("Could not reset!")))
+            });
+        }
     }
 
     fn set_message(&mut self, message: Option<String>) {
