@@ -227,13 +227,13 @@ impl App {
                 },
                 Selection::Branches => {
                     match commands[0].as_ref() {
-                        "p" => { let _ = self.push_origin(commands[1].to_string(), true); },
+                        "push" => { let _ = self.push_origin(commands[1].to_string(), true); },
                         _ => { print!("Unknown command!") }
                     }
                 },
                 Selection::Tags => {
                     match commands[0].as_ref() {
-                        "p" => { let _ = self.push_origin(commands[1].to_string(), false); },
+                        "push" => { let _ = self.push_origin(commands[1].to_string(), false); },
                         _ => { print!("Unknown command!") }
                     }
                 }
