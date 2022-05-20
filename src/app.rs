@@ -284,7 +284,8 @@ impl App {
     fn create_tag(&mut self, tag_name: String) {
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
             let obj = repo.revparse_single(&("refs/heads/".to_owned() + &self.get_selected_repository().active_branch_name)).unwrap();
-            match repo.tag_lightweight(tag_name.as_str(), &obj, true) {
+            let sig = repo.signature().unwrap();
+            match repo.tag(tag_name.as_str(), &obj, &sig, format!("Release {}", tag_name).as_str(), true) {
                 Ok(_oid) => { self.set_message(Some(String::from("Tag creation is successful!"))) },
                 Err(e) => { self.set_message(Some(format!("Error: {}", e.message())))  }
             };
