@@ -29,22 +29,22 @@ pub fn run_app<B: Backend>(
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match app.input_mode {
-                    InputMode::NORMAL=> match key.code {
+                    InputMode::Normal=> match key.code {
                         KeyCode::Char('q') => return Ok(()),
                         KeyCode::Left => app.repositories.unselect(),
                         KeyCode::Down => app.next(),
                         KeyCode::Up => app.previous(),
-                        KeyCode::Char('r') => app.change_selection(Selection::REPOSITORIES),
-                        KeyCode::Char('t') => app.change_selection(Selection::TAGS),
-                        KeyCode::Char('b') => app.change_selection(Selection::BRANCHES),
+                        KeyCode::Char('r') => app.change_selection(Selection::Repositories),
+                        KeyCode::Char('t') => app.change_selection(Selection::Tags),
+                        KeyCode::Char('b') => app.change_selection(Selection::Branches),
                         KeyCode::Char(':') => {
-                            if let Some(_) = &app.repositories.state.selected() {
-                                app.input_mode = InputMode::EDITING;
+                            if app.repositories.state.selected().is_some() {
+                                app.input_mode = InputMode::Editing;
                             };
                         },
                         _ => {}
                     },
-                    InputMode::EDITING => match key.code {
+                    InputMode::Editing => match key.code {
                         KeyCode::Char(c) => {
                             app.input.push(c);
                         },
@@ -56,7 +56,7 @@ pub fn run_app<B: Backend>(
                         },
                         KeyCode::Esc => {
                             app.input = String::new();
-                            app.input_mode = InputMode::NORMAL;
+                            app.input_mode = InputMode::Normal;
                         }
                         _ => {}
                     }
@@ -96,7 +96,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         )
         .split(chunks[0]);
 
-    let repository_list = create_selection_list_from_vector(&app.repositories.items, create_block_with_title(&app, Selection::REPOSITORIES), Some(&main_chunks[0]));
+    let repository_list = create_selection_list_from_vector(&app.repositories.items, create_block_with_title(app, Selection::Repositories), Some(&main_chunks[0]));
     f.render_stateful_widget(repository_list, main_chunks[0], &mut app.repositories.state);
 
     //Branches and Tags screens
@@ -111,32 +111,32 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         .split(main_chunks[1]);
 
     // Tags
-    let tag_list = create_selection_list_from_vector(&app.tags.items, create_block_with_title(&app, Selection::TAGS), None);
+    let tag_list = create_selection_list_from_vector(&app.tags.items, create_block_with_title(app, Selection::Tags), None);
     f.render_stateful_widget(tag_list, right_chunks[0], &mut app.tags.state);
 
     // Branches
-    let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(&app, Selection::BRANCHES), None);
+    let branch_list = create_selection_list_from_vector(&app.branches.items, create_block_with_title(app, Selection::Branches), None);
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
     let message = match &app.message {
         Some(message) => {
-            format!("{}", message)
+            message.to_string()
         },
         None => {
-            format!("{}", match app.repositories.state.selected() {
-                Some(selected) => format!("{}", &app.repositories.items[selected].path),
+            match app.repositories.state.selected() {
+                Some(selected) => app.repositories.items[selected].path.to_string(),
                 _ => String::new()
-            })
+            }
         }
     };
 
     // Info at the bottom
     let paragraph = match app.input_mode {
-        InputMode::NORMAL => Paragraph::new(message)
+        InputMode::Normal => Paragraph::new(message)
                 .style(Style::default().bg(Color::White).fg(Color::Black))
                 .block(create_block())
                 .alignment(Alignment::Left),
-        InputMode::EDITING => Paragraph::new(format!("{} > {}", &app.selection.to_string(), &app.input))
+        InputMode::Editing => Paragraph::new(format!("{} > {}", &app.selection.to_string(), &app.input))
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left)

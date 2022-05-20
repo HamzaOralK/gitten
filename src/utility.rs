@@ -56,12 +56,12 @@ pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<String> {
 pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     let mut branch_id: String = "".to_string();
     if let Some(r) = repository {
-        branch_id = r.head().unwrap().name().unwrap().replace("refs/heads/", "").to_string()
+        branch_id = r.head().unwrap().name().unwrap().replace("refs/heads/", "")
     }
     branch_id
 }
 
-pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(iterator: &'a Vec<T>, r: Option<&'a Rect>) -> Vec<ListItem<'a>> {
+pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(iterator: &'a [T], r: Option<&'a Rect>) -> Vec<ListItem<'a>> {
     iterator.iter()
         .map(|f| {
             f.convert_to_list_item(r)
@@ -69,7 +69,7 @@ pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem
         .collect()
 }
 
-pub fn create_selection_list_from_vector<'a, T: Display + ConvertableToListItem>(v: &'a Vec<T>, b: Block<'a>, r: Option<&'a Rect>) -> List<'a > {
+pub fn create_selection_list_from_vector<'a, T: Display + ConvertableToListItem>(v: &'a [T], b: Block<'a>, r: Option<&'a Rect>) -> List<'a > {
     List::new(convert_vector_to_list_item_vector(v, r))
         .block(b)
         .highlight_style(
@@ -111,5 +111,5 @@ pub fn git_credentials_callback(
         return cred;
     }
 
-    return Err(git2::Error::from_str("no credential option available"));
+    Err(git2::Error::from_str("no credential option available"))
 }

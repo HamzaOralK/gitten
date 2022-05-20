@@ -15,17 +15,17 @@ pub trait ConvertableToListItem {
 
 #[derive(PartialEq)]
 pub enum Selection {
-    REPOSITORIES,
-    TAGS,
-    BRANCHES
+    Repositories,
+    Tags,
+    Branches
 }
 
 impl Display for Selection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Selection::REPOSITORIES => "Repositories",
-            Selection::TAGS => "Tags",
-            Selection::BRANCHES => "Branches"
+            Selection::Repositories => "Repositories",
+            Selection::Tags => "Tags",
+            Selection::Branches => "Branches"
         })
     }
 }
@@ -73,7 +73,7 @@ impl ConvertableToListItem for AlfredStringItems {
     fn convert_to_list_item(&self, _chunck: Option<&Rect>) -> ListItem {
         ListItem::new(vec![
             Spans::from(vec![
-                Span::raw(format!("{}", &self))
+                Span::raw(self.to_string())
             ])
         ])
     }
@@ -81,8 +81,8 @@ impl ConvertableToListItem for AlfredStringItems {
 
 #[derive(PartialEq)]
 pub enum InputMode {
-    NORMAL,
-    EDITING,
+    Normal,
+    Editing,
 }
 
 pub struct StatefulList<T> {
@@ -106,7 +106,7 @@ impl<T: Clone> StatefulList<T> {
     pub fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if self.items.len() > 0 {
+                if !self.items.is_empty() {
                     if i >= self.items.len() - 1 {
                         0
                     } else {
@@ -124,7 +124,7 @@ impl<T: Clone> StatefulList<T> {
     pub fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if self.items.len() > 0 {
+                if !self.items.is_empty() {
                     if i == 0 {
                         self.items.len() - 1
                     } else {
@@ -157,17 +157,17 @@ pub struct App {
 impl App {
     pub fn new() -> App {
         let mut content = Vec::new();
-        let path = std::env::args().nth(1).unwrap_or("./".to_string());
+        let path = std::env::args().nth(1).unwrap_or_else(|| "./".to_string());
 
         App::generate_repository_content(path, &mut content);
 
         App {
-            selection: Selection::REPOSITORIES,
+            selection: Selection::Repositories,
             repositories: StatefulList::with_items(content),
             branches: StatefulList::with_items(vec![]),
             tags: StatefulList::with_items(vec![]),
             input: String::new(),
-            input_mode: InputMode::NORMAL,
+            input_mode: InputMode::Normal,
             message: None
         }
     }
@@ -182,20 +182,20 @@ impl App {
 
     pub fn next(&mut self) {
         match self.selection {
-            Selection::REPOSITORIES => {
+            Selection::Repositories => {
                 self.repositories.next()
             },
-            Selection::TAGS => self.tags.next(),
-            Selection::BRANCHES => self.branches.next(),
+            Selection::Tags => self.tags.next(),
+            Selection::Branches => self.branches.next(),
         };
         self.update_repository_details();
     }
 
     pub fn previous(&mut self) {
         match self.selection {
-            Selection::REPOSITORIES => self.repositories.previous(),
-            Selection::TAGS => self.tags.previous(),
-            Selection::BRANCHES => self.branches.previous(),
+            Selection::Repositories => self.repositories.previous(),
+            Selection::Tags => self.tags.previous(),
+            Selection::Branches => self.branches.previous(),
         }
         self.update_repository_details();
     }
@@ -209,27 +209,27 @@ impl App {
 
         if self.get_selected_repository().is_repository {
             match self.selection {
-                Selection::REPOSITORIES => {
+                Selection::Repositories => {
                     match commands[0].as_ref() {
                         "co" => { let _ = self.checkout_to_branch(commands[1].to_string()); },
                         "tag" => { let _ = self.create_tag(commands[1].to_string()); },
                         _ => { print!("Unknown command!") }
                     }
                 },
-                Selection::BRANCHES => {
+                Selection::Branches => {
                     match commands[0].as_ref() {
                         "p" => { let _ = self.push_origin(commands[1].to_string(), true); },
                         _ => { print!("Unknown command!") }
                     }
                 },
-                Selection::TAGS => {
+                Selection::Tags => {
                     match commands[0].as_ref() {
                         "p" => { let _ = self.push_origin(commands[1].to_string(), false); },
                         _ => { print!("Unknown command!") }
                     }
                 }
             }
-            self.input_mode = InputMode::NORMAL;
+            self.input_mode = InputMode::Normal;
         }
     }
 
@@ -293,7 +293,7 @@ impl App {
     }
 
     fn update_repository_details(&mut self) {
-        if self.selection == Selection::REPOSITORIES {
+        if self.selection == Selection::Repositories {
             //Get selected repository
             let rep = get_repository(&self.get_selected_repository().path);
             self.tags.unselect();
@@ -308,7 +308,7 @@ impl App {
 
         paths.for_each(|p| {
             let dir = p.unwrap();
-            if !dir.file_name().to_str().unwrap().starts_with(".") {
+            if !dir.file_name().to_str().unwrap().starts_with('.') {
                 let repository = get_repository(&dir.path().to_str().unwrap().to_string());
                 let active_branch_name = get_repository_active_branch(&repository);
                 content.push(
