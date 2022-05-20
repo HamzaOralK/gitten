@@ -6,8 +6,9 @@ use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{ListItem, ListState};
+
 use crate::utility;
-use crate::utility::{get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
+use crate::utility::{get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -21,7 +22,7 @@ pub enum Selection {
 }
 
 impl Display for Selection {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Selection::Repositories => "Repositories",
             Selection::Tags => "Tags",
@@ -36,6 +37,7 @@ pub struct AlfredRepositoryItem {
     pub folder_name: String,
     pub is_repository: bool,
     pub active_branch_name: String,
+    pub files_changed: usize,
 }
 
 impl Display for AlfredRepositoryItem {
@@ -49,8 +51,12 @@ impl ConvertableToListItem for AlfredRepositoryItem {
         let mut lines: Spans = Spans::default();
         let mut line_color = Color::Reset;
         if self.is_repository {
-            let repeat_time = if chunk.unwrap().width > ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + 6) {
-                chunk.unwrap().width - ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + 6)
+            let mut margin = 4;
+            if self.files_changed > 0 {
+                margin += 1;
+            }
+            let repeat_time = if chunk.unwrap().width > ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + margin) {
+                chunk.unwrap().width - ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + margin)
             } else {
                 0
             };
@@ -58,6 +64,7 @@ impl ConvertableToListItem for AlfredRepositoryItem {
             lines.0.push(Span::from(" ".repeat((repeat_time) as usize)));
             lines.0.push(Span::raw("("));
             lines.0.push(Span::from(self.active_branch_name.to_string()));
+            lines.0.push(Span::from(if self.files_changed > 0 { "*" } else { "" }));
             lines.0.push(Span::raw(")"));
             line_color = Color::Green
         } else {
@@ -70,7 +77,7 @@ impl ConvertableToListItem for AlfredRepositoryItem {
 type AlfredStringItems = String;
 
 impl ConvertableToListItem for AlfredStringItems {
-    fn convert_to_list_item(&self, _chunck: Option<&Rect>) -> ListItem {
+    fn convert_to_list_item(&self, _chunk: Option<&Rect>) -> ListItem {
         ListItem::new(vec![
             Spans::from(vec![
                 Span::raw(self.to_string())
@@ -312,12 +319,14 @@ impl App {
             if !dir.file_name().to_str().unwrap().starts_with('.') {
                 let repository = get_repository(&dir.path().to_str().unwrap().to_string());
                 let active_branch_name = get_repository_active_branch(&repository);
+                let files_changed = get_files_changed(&repository).unwrap_or(0);
                 content.push(
                     AlfredRepositoryItem {
                         path: dir.path().to_str().unwrap().to_string(),
                         folder_name: dir.file_name().into_string().unwrap(),
                         is_repository: is_repository(dir.path()),
-                        active_branch_name
+                        active_branch_name,
+                        files_changed
                     }
                 );
             }

@@ -61,6 +61,17 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     branch_id
 }
 
+pub fn get_files_changed(repository: &Option<Repository>) -> Option<usize> {
+    if let Some(r) = repository {
+        return match r.diff_index_to_workdir(None, None) {
+            Ok(diff) => { Some(diff.stats().unwrap().files_changed()) },
+            Err(_e) => None
+        }
+    } else {
+        None
+    }
+}
+
 pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(iterator: &'a [T], r: Option<&'a Rect>) -> Vec<ListItem<'a>> {
     iterator.iter()
         .map(|f| {
@@ -73,9 +84,8 @@ pub fn create_selection_list_from_vector<'a, T: Display + ConvertableToListItem>
     List::new(convert_vector_to_list_item_vector(v, r))
         .block(b)
         .highlight_style(
-            Style::default().add_modifier(Modifier::BOLD),
+            Style::default().add_modifier(Modifier::BOLD).bg(Color::Blue),
         )
-        .highlight_symbol("> ")
 }
 
 pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
@@ -98,11 +108,7 @@ pub fn create_block() -> Block<'static> {
     b.borders(Borders::NONE)
 }
 
-pub fn git_credentials_callback(
-    _url: &str,
-    user_from_url: Option<&str>,
-    cred_types_allowed: CredentialType,
-) -> Result<Cred, git2::Error> {
+pub fn git_credentials_callback(_url: &str, user_from_url: Option<&str>, cred_types_allowed: CredentialType) -> Result<Cred, git2::Error> {
     let user = user_from_url.unwrap();
 
     if cred_types_allowed.contains(CredentialType::SSH_KEY) {
