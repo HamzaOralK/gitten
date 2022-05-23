@@ -1,19 +1,19 @@
-use git2::{Remote, Repository};
+use git2::{AutotagOption, FetchOptions, Remote, RemoteCallbacks, Repository};
 use crate::utility::git_credentials_callback;
 
 pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
 
-    let mut cb = git2::RemoteCallbacks::new();
+    let mut cb = RemoteCallbacks::new();
 
     cb.credentials(git_credentials_callback);
 
-    let mut fo = git2::FetchOptions::new();
+    let mut fo = FetchOptions::new();
     fo.remote_callbacks(cb);
 
-    fo.download_tags(git2::AutotagOption::All);
+    fo.download_tags(AutotagOption::All);
     fo.update_fetchhead(true);
 
-    remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
+    remote.fetch(refs, Some(&mut fo), None)?;
 
     let fetch_head = repo.find_reference(&format!("refs/remotes/origin/{}", refs[0]))?;
     Ok(repo.reference_to_annotated_commit(&fetch_head).unwrap())
@@ -110,4 +110,14 @@ pub fn do_merge<'a>(repo: &'a Repository, remote_branch: &str, fetch_commit: git
         msg = "Nothing to do...";
     }
     Ok(msg.to_string())
+}
+
+pub fn fetch_all(remote: &mut Remote) -> Result<String, git2::Error> {
+    let mut cb = RemoteCallbacks::new();
+    cb.credentials(git_credentials_callback);
+    let mut fo = FetchOptions::new();
+    fo.remote_callbacks(cb);
+    remote.download(&[] as &[&str], Some(&mut fo))?;
+    remote.update_tips(None, true, AutotagOption::Unspecified, None)?;
+    Ok(String::from("Fetching is done!"))
 }

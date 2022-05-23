@@ -109,8 +109,8 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
     let repository_list = create_selection_list_from_vector(&app.repositories.items, create_block_with_selection(app, Selection::Repositories), Some(&left_chunks[0]));
     f.render_stateful_widget(repository_list, left_chunks[0], &mut app.repositories.state);
 
-    let log_list = create_selection_list_from_vector(&app.logs, create_block_with_title("Logs"), None);
-    f.render_widget(log_list, left_chunks[1]);
+    let log_list = create_selection_list_from_vector(&app.logs.items, create_block_with_title("Logs"), None);
+    f.render_stateful_widget(log_list, left_chunks[1], &mut app.logs.state);
 
     //Branches and Tags screens
     let right_chunks = Layout::default()

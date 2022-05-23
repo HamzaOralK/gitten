@@ -7,7 +7,7 @@ use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, List, ListItem};
 use crate::App;
 use crate::app::{ConvertableToListItem, Selection};
-use crate::pull::{do_fetch, do_merge};
+use crate::pull::{do_fetch, do_merge, fetch_all};
 
 pub fn is_repository(path: PathBuf) -> bool {
     match Repository::open(path) {
@@ -62,10 +62,15 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     branch_id
 }
 
-pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository ) -> Result<String, git2::Error> {
+pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
     let mut remote = repository.find_remote(remote_name).unwrap();
     let fetch_commit = do_fetch(repository, &[remote_branch], &mut remote)?;
     do_merge(repository, remote_branch, fetch_commit)
+}
+
+pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
+    let mut remote = repository.find_remote(remote_name).unwrap();
+    fetch_all(&mut remote)
 }
 
 pub fn get_files_changed(repository: &Option<Repository>) -> Option<usize> {

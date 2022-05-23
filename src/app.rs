@@ -9,7 +9,7 @@ use tui::text::{Span, Spans};
 use tui::widgets::{ListItem, ListState};
 
 use crate::utility;
-use crate::utility::{fetch_repository_from_remote, get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
+use crate::utility::{fetch_branches_repository_from_remote, fetch_repository_from_remote, get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -159,7 +159,7 @@ pub struct App {
     pub tags: StatefulList<AlfredStringItems>,
     pub input: String,
     pub input_mode: InputMode,
-    pub logs: Vec<String>,
+    pub logs: StatefulList<String>,
 }
 
 impl App {
@@ -176,7 +176,7 @@ impl App {
             tags: StatefulList::with_items(vec![]),
             input: String::new(),
             input_mode: InputMode::Normal,
-            logs: Vec::new()
+            logs: StatefulList::with_items(vec![])
         }
     }
 
@@ -218,23 +218,24 @@ impl App {
             match self.selection {
                 Selection::Repositories => {
                     match commands[0].as_ref() {
-                        "co" => { let _ = self.checkout_to_branch(commands[1].to_string()); },
-                        "tag" => { let _ = self.create_tag(commands[1].to_string()); },
+                        "co" => { let _ = self.checkout_to_branch(commands.get(1) ); },
+                        "tag" => { let _ = self.create_tag(commands.get(1)); },
                         "rh" => { let _ = self.reset_selected_repository(ResetType::Hard); },
-                        "pull" => { let _ = self.pull_origin(commands[1].to_string()); }
-                        _ => { print!("Unknown command!") }
+                        "pull" => { let _ = self.pull_remote(commands.get(1)); }
+                        "fetch" => { let _ = self.fetch_remote(commands.get(1)); }
+                        _ => { self.add_log("Unknown command!".to_string()) }
                     }
                 },
                 Selection::Branches => {
                     match commands[0].as_ref() {
-                        "push" => { let _ = self.push_origin(commands[1].to_string(), true); },
-                        _ => { print!("Unknown command!") }
+                        "push" => { let _ = self.push_remote(commands.get(1), true); },
+                        _ => { self.add_log("Unknown command!".to_string()) }
                     }
                 },
                 Selection::Tags => {
                     match commands[0].as_ref() {
-                        "push" => { let _ = self.push_origin(commands[1].to_string(), false); },
-                        _ => { print!("Unknown command!") }
+                        "push" => { let _ = self.push_remote(commands.get(1), false); },
+                        _ => { self.add_log("Unknown command!".to_string()) }
                     }
                 }
             }
@@ -242,45 +243,77 @@ impl App {
         }
     }
 
-    pub fn generate_help(&self) -> String {
-        match self.selection {
-            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | q"),
-            Selection::Branches => String::from(":push <remote> | q"),
-            Selection::Tags => String::from(":push <remote> | q"),
-        }
-    }
+    fn push_remote(&mut self, remote: Option<&String>, is_branch: bool) {
+        let remote = match remote {
+            Some(b) => b,
+            None => { self.add_log("remote name must not be null".to_string()); return }
+        };
 
-    fn push_origin(&mut self, origin: String, is_branch: bool) {
         let mut callbacks = git2::RemoteCallbacks::new();
         callbacks.credentials(git_credentials_callback);
 
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
             let mut opts = PushOptions::new();
             opts.remote_callbacks(callbacks);
-            let mut remote = repo.find_remote(origin.as_str()).unwrap();
+            let mut remote = repo.find_remote(remote.as_str()).unwrap();
 
             let ref_spec = if is_branch {
-                format!("refs/heads/{}", &self.branches.items[self.branches.state.selected().unwrap()].to_string())
+                if let Some(b) = self.branches.state.selected() {
+                    format!("refs/heads/{}", &self.branches.items[b].to_string())
+                } else {
+                    self.add_log("Please select a branch!".to_string());
+                    return
+                }
             } else {
-                format!("refs/tags/{}", &self.tags.items[self.tags.state.selected().unwrap()].to_string())
+                if let Some(t) = self.tags.state.selected() {
+                    format!("refs/tags/{}", &self.tags.items[t].to_string())
+                } else {
+                    self.add_log("Please select a tag!".to_string());
+                    return
+                }
             };
 
             match remote.push(&[&ref_spec], Some(&mut opts)) {
-                Ok(()) => self.set_message(Some(String::from("Push is successful!"))),
-                Err(e) => { self.set_message(Some(format!("Error: {}", e.message()))) }
+                Ok(()) => self.add_log("Push is successful!".to_string()),
+                Err(e) => { self.add_log("Error: ".to_owned() + e.message()) }
             };
         }
     }
 
-    fn pull_origin(&mut self, origin: String) {
+    fn pull_remote(&mut self, remote: Option<&String>) {
+
+        let remote = match remote {
+            Some(b) => b,
+            None => { self.add_log("remote name must not be null".to_string()); return }
+        };
+
         let selected_repository = self.get_selected_repository();
         let branch_name = selected_repository.active_branch_name.as_str().to_owned();
         let repository = get_repository(&selected_repository.path).unwrap();
 
-        self.set_message(Some(fetch_repository_from_remote(origin.as_str(), branch_name.as_str(), &repository).unwrap()));
+        self.add_log(fetch_repository_from_remote(remote.as_str(), branch_name.as_str(), &repository).unwrap());
     }
 
-    fn checkout_to_branch(&mut self, branch_name: String) {
+    fn fetch_remote(&mut self, remote: Option<&String>) {
+
+        let remote = match remote {
+            Some(b) => b,
+            None => { self.add_log("remote name must not be null".to_string()); return }
+        };
+
+        let selected_repository = self.get_selected_repository();
+        let repository = get_repository(&selected_repository.path).unwrap();
+
+        self.add_log(fetch_branches_repository_from_remote( remote.as_str(), &repository).unwrap());
+    }
+
+    fn checkout_to_branch(&mut self, branch_name: Option<&String>) {
+
+        let branch_name = match branch_name {
+            Some(b) => b,
+            None => { self.add_log("Branch name must not be null".to_string()); return }
+        };
+
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
             let head = repo.head().unwrap();
             let oid = head.target().unwrap();
@@ -297,22 +330,28 @@ impl App {
                     let _result = repo.set_head(&("refs/heads/".to_owned() + branch_name));
                     self.get_selected_repository().active_branch_name = branch_name.to_string();
                     self.update_repository_details();
-                    self.set_message(Some(String::from("Checkout is successful!")));
+                    self.add_log("Checkout is successful!".to_string());
                 },
                 Err(e) => {
-                    self.set_message(Some(format!("Error: {}", e.message())))
+                    self.add_log(format!("Error: {}", e.message()))
                 }
             };
         }
     }
 
-    fn create_tag(&mut self, tag_name: String) {
+    fn create_tag(&mut self, tag_name: Option<&String>) {
+
+        let tag_name = match tag_name {
+            Some(b) => b,
+            None => { self.add_log("Tag name must not be null".to_string()); return }
+        };
+
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
             let obj = repo.revparse_single(&("refs/heads/".to_owned() + &self.get_selected_repository().active_branch_name)).unwrap();
             let sig = repo.signature().unwrap();
             match repo.tag(tag_name.as_str(), &obj, &sig, format!("Release {}", tag_name).as_str(), true) {
-                Ok(_oid) => { self.set_message(Some(String::from("Tag creation is successful!"))) },
-                Err(e) => { self.set_message(Some(format!("Error: {}", e.message())))  }
+                Ok(_oid) => { self.add_log(String::from("Tag creation is successful!")) },
+                Err(e) => { self.add_log(format!("Error: {}", e.message()))  }
             };
             self.update_repository_details();
         }
@@ -362,16 +401,29 @@ impl App {
             let obj = r.find_object(head.target().unwrap(), None).unwrap();
             match r.reset(&obj, reset_type, None) {
                 Ok(()) => {
-                    self.get_selected_repository().files_changed = 0
+                    self.get_selected_repository().files_changed = 0;
+                    self.add_log(String::from("Reset Successful!"))
                 },
-                Err(_) => self.set_message(Some(String::from("Could not reset!")))
+                Err(_) => self.add_log(String::from("Could not reset!"))
             };
         }
     }
 
-    fn set_message(&mut self, message: Option<String>) {
-        if let Some(m) = message {
-            self.logs.push(m);
+    fn add_log(&mut self, message: String) {
+        self.logs.items.push(format!("{} - {}", self.get_repository_info(), message));
+        self.logs.state.select(Some(self.logs.items.len()));
+    }
+
+    fn get_repository_info(&self) -> String {
+        let r = &self.repositories.items[self.repositories.state.selected().unwrap()];
+        format!("{} - {}", r.folder_name, r.active_branch_name)
+    }
+
+    pub fn generate_help(&self) -> String {
+        match self.selection {
+            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | fetch <remote> | q"),
+            Selection::Branches => String::from(":push <remote> | q"),
+            Selection::Tags => String::from(":push <remote> | q"),
         }
     }
 }
