@@ -124,7 +124,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         },
         None => {
             match app.repositories.state.selected() {
-                Some(selected) => app.repositories.items[selected].path.to_string(),
+                Some(_) => app.generate_help(),
                 _ => String::new()
             }
         }

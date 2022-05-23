@@ -24,9 +24,9 @@ pub enum Selection {
 impl Display for Selection {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Selection::Repositories => "Repositories",
-            Selection::Tags => "Tags",
-            Selection::Branches => "Branches"
+            Selection::Repositories => "(R)epositories",
+            Selection::Tags => "(T)ags",
+            Selection::Branches => "(B)ranches"
         })
     }
 }
@@ -239,6 +239,14 @@ impl App {
                 }
             }
             self.input_mode = InputMode::Normal;
+        }
+    }
+
+    pub fn generate_help(&self) -> String {
+        match self.selection {
+            Selection::Repositories => String::from(":co | :tag | :rh | :pull <origin> | q"),
+            Selection::Branches => String::from(":push <remote> | q"),
+            Selection::Tags => String::from(":push <remote> | q"),
         }
     }
 
