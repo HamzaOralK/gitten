@@ -95,7 +95,7 @@ pub fn create_selection_list_from_vector<'a, T: Display + ConvertableToListItem>
         )
 }
 
-pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static> {
+pub fn create_block_with_selection(app: &App, selection: Selection) -> Block<'static> {
     let b = Block::default();
 
     let style = if app.selection == selection {
@@ -107,6 +107,14 @@ pub fn create_block_with_title(app: &App, selection: Selection) -> Block<'static
     b.borders(Borders::ALL)
         .title(Spans::from(vec![
             Span::styled(selection.to_string(), style)
+        ]))
+}
+
+pub fn create_block_with_title(title: &str) -> Block<'static> {
+    let b = Block::default();
+    b.borders(Borders::ALL)
+        .title(Spans::from(vec![
+            Span::styled(title.to_string(), Style::default().bg(Color::Black).fg(Color::White))
         ]))
 }
 

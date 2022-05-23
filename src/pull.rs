@@ -11,10 +11,11 @@ pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote)
     fo.remote_callbacks(cb);
 
     fo.download_tags(git2::AutotagOption::All);
+    fo.update_fetchhead(true);
 
-    remote.fetch(refs, Some(&mut fo), None)?;
+    remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
 
-    let fetch_head = repo.find_reference("FETCH_HEAD")?;
+    let fetch_head = repo.find_reference(&format!("refs/remotes/origin/{}", refs[0]))?;
     Ok(repo.reference_to_annotated_commit(&fetch_head).unwrap())
 }
 

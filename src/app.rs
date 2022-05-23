@@ -2,6 +2,7 @@ use utility::is_repository;
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
 use git2::{PushOptions, ResetType};
+use std::string::String;
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
@@ -158,7 +159,7 @@ pub struct App {
     pub tags: StatefulList<AlfredStringItems>,
     pub input: String,
     pub input_mode: InputMode,
-    pub message: Option<String>,
+    pub logs: Vec<String>,
 }
 
 impl App {
@@ -175,7 +176,7 @@ impl App {
             tags: StatefulList::with_items(vec![]),
             input: String::new(),
             input_mode: InputMode::Normal,
-            message: None
+            logs: Vec::new()
         }
     }
 
@@ -184,7 +185,6 @@ impl App {
     }
 
     pub fn on_tick(&mut self) {
-        self.message = None;
     }
 
     pub fn next(&mut self) {
@@ -370,6 +370,8 @@ impl App {
     }
 
     fn set_message(&mut self, message: Option<String>) {
-        self.message = message
+        if let Some(m) = message {
+            self.logs.push(m);
+        }
     }
 }
