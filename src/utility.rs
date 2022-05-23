@@ -26,7 +26,7 @@ pub fn get_repository(path: &String) -> Option<Repository> {
 pub fn get_repository_tags(repository: &Option<Repository>) -> Vec<String> {
     let mut tags = Vec::new();
     if let Some(r) = repository {
-        r.tag_names(Some("[0-99999999].[0-99999999].[0-99999999]")).iter().for_each(|f| {
+        r.tag_names(None).iter().for_each(|f| {
             f.iter().for_each(|x| {
                 if let Some(tag) = x {
                     tags.push(tag.to_string());

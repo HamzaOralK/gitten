@@ -20,7 +20,7 @@ Checkout to a new or already in place branch:
 
 Pull from the current selected branch from the supplied remote:
 ```shell
-:pull <origin-name>
+:pull <remote-name>
 ```
 
 Create a tag from active branch:

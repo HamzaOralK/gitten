@@ -10,7 +10,7 @@ pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote)
     let mut fo = git2::FetchOptions::new();
     fo.remote_callbacks(cb);
 
-    fo.download_tags(git2::AutotagOption::None);
+    fo.download_tags(git2::AutotagOption::All);
 
     remote.fetch(refs, Some(&mut fo), None)?;
 

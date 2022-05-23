@@ -10,3 +10,6 @@ tui = "0.18"
 crossterm = "0.23"
 git2 = "0.14"
 dirs = "4.0.0"
+
+[profile.release]
+opt-level = 3

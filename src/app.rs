@@ -244,7 +244,7 @@ impl App {
 
     pub fn generate_help(&self) -> String {
         match self.selection {
-            Selection::Repositories => String::from(":co | :tag | :rh | :pull <origin> | q"),
+            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | q"),
             Selection::Branches => String::from(":push <remote> | q"),
             Selection::Tags => String::from(":push <remote> | q"),
         }
