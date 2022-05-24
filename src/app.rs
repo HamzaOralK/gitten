@@ -291,7 +291,14 @@ impl App {
         let branch_name = selected_repository.active_branch_name.as_str().to_owned();
         let repository = get_repository(&selected_repository.path).unwrap();
 
-        self.add_log(fetch_repository_from_remote(remote.as_str(), branch_name.as_str(), &repository).unwrap());
+        match fetch_repository_from_remote(remote.as_str(), branch_name.as_str(), &repository) {
+            Ok(r) => {
+                self.add_log(r);
+            },
+            Err(e) => {
+                self.add_log(format!("Error: {}", e.message()))
+            }
+        };
     }
 
     fn fetch_remote(&mut self, remote: Option<&String>) {

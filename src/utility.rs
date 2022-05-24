@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::fmt::{Display, Error};
 use std::path::PathBuf;
-use git2::{Cred, CredentialType, Repository};
+use git2::{AnnotatedCommit, Cred, CredentialType, Repository};
 use tui::layout::{Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
@@ -64,8 +64,13 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
 
 pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
     let mut remote = repository.find_remote(remote_name).unwrap();
-    let fetch_commit = do_fetch(repository, &[remote_branch], &mut remote)?;
-    do_merge(repository, remote_branch, fetch_commit)
+
+    let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
+        do_merge(repository, remote_branch, fetch_commit)
+    } else {
+        Err(git2::Error::from_str("Could not find remote branch!"))
+    };
+    result
 }
 
 pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {

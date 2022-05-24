@@ -1,3 +1,5 @@
+extern crate core;
+
 mod run_app;
 mod app;
 mod utility;
