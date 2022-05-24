@@ -41,4 +41,4 @@ selected branch or tag to the desired remote:
 - [X] Push to remote with tags or not
 - [X] Mark dirty head and allow to reset
 - [X] Force pull
-- [ ] Multiple repository selection and bulk branch and tag creation
+- [ ] Add tests
