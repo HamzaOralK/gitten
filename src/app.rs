@@ -264,13 +264,11 @@ impl App {
                     self.add_log("Please select a branch!".to_string());
                     return
                 }
-            } else {
-                if let Some(t) = self.tags.state.selected() {
+            } else if let Some(t) = self.tags.state.selected() {
                     format!("refs/tags/{}", &self.tags.items[t].to_string())
-                } else {
-                    self.add_log("Please select a tag!".to_string());
-                    return
-                }
+            } else {
+                self.add_log("Please select a tag!".to_string());
+                return
             };
 
             match remote.push(&[&ref_spec], Some(&mut opts)) {

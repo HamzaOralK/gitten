@@ -1,6 +1,6 @@
-use std::fmt::{Display, Error};
+use std::fmt::{Display};
 use std::path::PathBuf;
-use git2::{AnnotatedCommit, Cred, CredentialType, Repository};
+use git2::{Cred, CredentialType, Repository};
 use tui::layout::{Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
