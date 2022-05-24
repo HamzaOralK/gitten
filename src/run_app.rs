@@ -9,7 +9,12 @@ use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use crate::{App};
 use crate::app::{InputMode, Selection};
-use crate::utility::{create_block, create_block_with_selection, create_block_with_title, create_selection_list_from_vector};
+use crate::utility::{
+    create_block,
+    create_block_with_selection,
+    create_block_with_title,
+    create_selection_list_from_vector
+};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,

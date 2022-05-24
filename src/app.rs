@@ -9,7 +9,16 @@ use tui::text::{Span, Spans};
 use tui::widgets::{ListItem, ListState};
 
 use crate::utility;
-use crate::utility::{fetch_branches_repository_from_remote, fetch_repository_from_remote, get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback};
+use crate::utility::{
+    fetch_branches_repository_from_remote,
+    fetch_repository_from_remote,
+    get_files_changed,
+    get_repository,
+    get_repository_active_branch,
+    get_repository_branches,
+    get_repository_tags,
+    git_credentials_callback
+};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
