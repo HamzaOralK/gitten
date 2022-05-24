@@ -13,6 +13,11 @@ To change window use "r" for Repositories, "t" for Tags and "B" for branches.
 
 And right now while you are on repositories you can do:
 
+Fetch a remote for a repository
+```shell
+:fetch <remote-name>
+```
+
 Checkout to a new or already in place branch:
 ```shell
 :co <branch-name>
@@ -40,5 +45,6 @@ selected branch or tag to the desired remote:
 ## TODO
 - [X] Push to remote with tags or not
 - [X] Mark dirty head and allow to reset
+- [X] Fetch remote
 - [X] Force pull
 - [ ] Add tests
