@@ -1,4 +1,3 @@
-use utility::is_repository;
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
 use git2::{PushOptions, ResetType};
@@ -7,18 +6,8 @@ use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{ListItem, ListState};
-
-use crate::utility;
-use crate::utility::{
-    fetch_branches_repository_from_remote,
-    fetch_repository_from_remote,
-    get_files_changed,
-    get_repository,
-    get_repository_active_branch,
-    get_repository_branches,
-    get_repository_tags,
-    git_credentials_callback
-};
+use crate::pull::{fetch_branches_repository_from_remote, fetch_repository_from_remote};
+use crate::repo::{get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback, is_repository};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -100,6 +89,7 @@ impl ConvertableToListItem for AlfredStringItems {
 pub enum InputMode {
     Normal,
     Editing,
+    Search
 }
 
 pub struct StatefulList<T> {
@@ -107,17 +97,12 @@ pub struct StatefulList<T> {
     pub items: Vec<T>,
 }
 
-impl<T: Clone> StatefulList<T> {
+impl<T: Clone + Display> StatefulList<T> {
     fn with_items(items: Vec<T>) -> StatefulList<T> {
         StatefulList {
             state: ListState::default(),
             items,
         }
-    }
-
-    #[allow(dead_code)]
-    fn add(&mut self, items: Vec<T>) {
-        self.items.push(items[0].clone())
     }
 
     pub fn next(&mut self) {
@@ -158,6 +143,14 @@ impl<T: Clone> StatefulList<T> {
 
     pub fn unselect(&mut self) {
         self.state.select(None);
+    }
+
+    pub fn search(&mut self, input: &str) {
+        self.items.iter().enumerate().for_each(|(i, _x)| {
+            if self.items[i].to_string().contains(input) {
+                self.state.select(Some(i));
+            }
+        });
     }
 }
 
@@ -438,6 +431,15 @@ impl App {
             Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | fetch <remote> | q"),
             Selection::Branches => String::from(":push <remote> | q"),
             Selection::Tags => String::from(":push <remote> | q"),
+        }
+    }
+
+    pub fn search(&mut self) {
+        let input = self.input.as_str();
+        match self.selection {
+            Selection::Tags => self.tags.search(input),
+            Selection::Branches => self.branches.search(input),
+            Selection::Repositories => self.repositories.search(input),
         }
     }
 }

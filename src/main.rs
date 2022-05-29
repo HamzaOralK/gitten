@@ -4,6 +4,7 @@ mod run_app;
 mod app;
 mod utility;
 mod pull;
+mod repo;
 
 use app::App;
 use run_app::run_app;

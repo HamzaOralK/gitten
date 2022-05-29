@@ -1,93 +1,10 @@
 use std::fmt::{Display};
-use std::path::PathBuf;
-use git2::{Cred, CredentialType, Repository};
 use tui::layout::{Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, List, ListItem};
 use crate::App;
 use crate::app::{ConvertableToListItem, Selection};
-use crate::pull::{do_fetch, do_merge, fetch_all};
-
-pub fn is_repository(path: PathBuf) -> bool {
-    match Repository::open(path) {
-        Ok(_repo) => true,
-        _error => false
-    }
-}
-
-pub fn get_repository(path: &String) -> Option<Repository> {
-    match Repository::open(path) {
-        Ok(repo) => Some(repo),
-        Err(_e) => None
-    }
-}
-
-pub fn get_repository_tags(repository: &Option<Repository>) -> Vec<String> {
-    let mut tags = Vec::new();
-    if let Some(r) = repository {
-        r.tag_names(None).iter().for_each(|f| {
-            f.iter().for_each(|x| {
-                if let Some(tag) = x {
-                    tags.push(tag.to_string());
-                };
-            });
-        });
-    }
-    tags
-}
-
-pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<String> {
-    let mut branches_string = Vec::new();
-
-    if let Some(r) = repository {
-        let branches = match r.branches(None) {
-            Ok(branches) => Some(branches),
-            Err(_) => None
-        };
-
-        branches.unwrap().for_each(|b| {
-            let b1 = b.unwrap().0.name().unwrap().unwrap().to_string();
-            branches_string.push(b1);
-        });
-    }
-    branches_string
-}
-
-pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
-    let mut branch_id: String = "".to_string();
-    if let Some(r) = repository {
-        branch_id = r.head().unwrap().name().unwrap().replace("refs/heads/", "")
-    }
-    branch_id
-}
-
-pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
-    let mut remote = repository.find_remote(remote_name).unwrap();
-
-    let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
-        do_merge(repository, remote_branch, fetch_commit)
-    } else {
-        Err(git2::Error::from_str("Could not find remote branch!"))
-    };
-    result
-}
-
-pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
-    let mut remote = repository.find_remote(remote_name).unwrap();
-    fetch_all(&mut remote)
-}
-
-pub fn get_files_changed(repository: &Option<Repository>) -> Option<usize> {
-    if let Some(r) = repository {
-        return match r.diff_index_to_workdir(None, None) {
-            Ok(diff) => { Some(diff.stats().unwrap().files_changed()) },
-            Err(_e) => None
-        }
-    } else {
-        None
-    }
-}
 
 pub fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(iterator: &'a [T], r: Option<&'a Rect>) -> Vec<ListItem<'a>> {
     iterator.iter()
@@ -131,16 +48,4 @@ pub fn create_block_with_title(title: &str) -> Block<'static> {
 pub fn create_block() -> Block<'static> {
     let b = Block::default();
     b.borders(Borders::NONE)
-}
-
-pub fn git_credentials_callback(_url: &str, user_from_url: Option<&str>, cred_types_allowed: CredentialType) -> Result<Cred, git2::Error> {
-    let user = user_from_url.unwrap();
-
-    if cred_types_allowed.contains(CredentialType::SSH_KEY) {
-        let private_key = dirs::home_dir().unwrap().join(".ssh").join("id_rsa");
-        let cred = Cred::ssh_key(user, None, &private_key, None);
-        return cred;
-    }
-
-    Err(git2::Error::from_str("no credential option available"))
 }

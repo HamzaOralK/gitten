@@ -47,6 +47,11 @@ pub fn run_app<B: Backend>(
                                 app.input_mode = InputMode::Editing;
                             };
                         },
+                        KeyCode::Char('/') => {
+                            if app.repositories.state.selected().is_some() {
+                                app.input_mode = InputMode::Search;
+                            };
+                        },
                         _ => {}
                     },
                     InputMode::Editing => match key.code {
@@ -64,7 +69,22 @@ pub fn run_app<B: Backend>(
                             app.input_mode = InputMode::Normal;
                         }
                         _ => {}
+                    },
+                    InputMode::Search => match key.code {
+                        KeyCode::Char(c) => {
+                            app.input.push(c);
+                            app.search();
+                        },
+                        KeyCode::Backspace => {
+                            app.input.pop();
+                        },
+                        KeyCode::Esc => {
+                            app.input = String::new();
+                            app.input_mode = InputMode::Normal;
+                        }
+                        _ =>  {}
                     }
+
                 }
             }
         }
@@ -148,6 +168,10 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
                 .block(create_block())
                 .alignment(Alignment::Left),
         InputMode::Editing => Paragraph::new(format!("{} > {}", &app.selection.to_string(), &app.input))
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(create_block())
+            .alignment(Alignment::Left),
+        InputMode::Search => Paragraph::new(format!("Search > {}", &app.input))
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left)

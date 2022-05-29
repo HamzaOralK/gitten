@@ -1,5 +1,5 @@
 use git2::{AutotagOption, FetchOptions, Remote, RemoteCallbacks, Repository};
-use crate::utility::git_credentials_callback;
+use crate::repo::git_credentials_callback;
 
 pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
 
@@ -110,6 +110,22 @@ pub fn do_merge<'a>(repo: &'a Repository, remote_branch: &str, fetch_commit: git
         msg = "Nothing to do...";
     }
     Ok(msg.to_string())
+}
+
+pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
+    let mut remote = repository.find_remote(remote_name).unwrap();
+
+    let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
+        do_merge(repository, remote_branch, fetch_commit)
+    } else {
+        Err(git2::Error::from_str("Could not find remote branch!"))
+    };
+    result
+}
+
+pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
+    let mut remote = repository.find_remote(remote_name).unwrap();
+    fetch_all(&mut remote)
 }
 
 pub fn fetch_all(remote: &mut Remote) -> Result<String, git2::Error> {
