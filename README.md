@@ -47,4 +47,5 @@ selected branch or tag to the desired remote:
 - [X] Mark dirty head and allow to reset
 - [X] Fetch remote
 - [X] Force pull
+- [X] Search within the selections
 - [ ] Add tests
