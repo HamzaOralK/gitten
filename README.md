@@ -39,6 +39,11 @@ selected branch or tag to the desired remote:
 :push <remote-name>
 ```
 
+To search within the selections:
+```shell
+/search <search-string>
+```
+
 ## Showcase
 ![](alfred.gif)
 
