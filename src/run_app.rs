@@ -88,7 +88,6 @@ pub fn run_app<B: Backend>(
                     InputMode::Command => match key.code {
                         KeyCode::Char(c) => {
                             app.input.push(c);
-                            app.search();
                         },
                         KeyCode::Backspace => {
                             app.input.pop();
