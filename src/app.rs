@@ -149,7 +149,7 @@ impl<T: Clone + Display> StatefulList<T> {
 
     pub fn search(&mut self, input: &str) {
         self.items.iter().enumerate().for_each(|(i, _x)| {
-            if self.items[i].to_string().contains(input) {
+            if self.items[i].to_string().to_lowercase().contains(&input.to_lowercase()) {
                 self.state.select(Some(i));
             }
         });
