@@ -3,6 +3,15 @@ Alfred is git project manager with multiple repositories.
 
 With alfred you can check out to new branches and tag branches from you active.
 
+## Prerequisite
+To build one has to have OpenSSL installed and adjust config.toml file accordingly to be able to run and 
+compile the project.
+
+For mac:
+```shell
+brew install openssl@3
+```
+
 ## Run
 ```shell
 cargo run <path to open in alfred with git projects inside>

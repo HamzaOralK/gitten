@@ -1,0 +1,4 @@
+[env]
+OPENSSL_LIB_DIR = "/usr/local/opt/openssl@3/lib"
+OPENSSL_INCLUDE_DIR="/usr/local/opt/openssl@3/include"
+OPENSSL_STATIC="yes"
