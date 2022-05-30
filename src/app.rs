@@ -1,5 +1,6 @@
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
+use std::process::Command;
 use git2::{PushOptions, ResetType};
 use std::string::String;
 use tui::layout::Rect;
@@ -89,7 +90,8 @@ impl ConvertableToListItem for AlfredStringItems {
 pub enum InputMode {
     Normal,
     Editing,
-    Search
+    Search,
+    Command
 }
 
 pub struct StatefulList<T> {
@@ -311,7 +313,13 @@ impl App {
         let selected_repository = self.get_selected_repository();
         let repository = get_repository(&selected_repository.path).unwrap();
 
-        self.add_log(fetch_branches_repository_from_remote( remote.as_str(), &repository).unwrap());
+        match fetch_branches_repository_from_remote( remote.as_str(), &repository) {
+            Ok(message) => {
+                self.add_log(message);
+                self.update_repository_details();
+            },
+            Err(e) => self.add_log(e.message().to_string())
+        }
     }
 
     fn checkout_to_branch(&mut self, branch_name: Option<&String>) {
@@ -428,7 +436,7 @@ impl App {
 
     pub fn generate_help(&self) -> String {
         match self.selection {
-            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | fetch <remote> | q"),
+            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | q"),
             Selection::Branches => String::from(":push <remote> | q"),
             Selection::Tags => String::from(":push <remote> | q"),
         }
@@ -440,6 +448,18 @@ impl App {
             Selection::Tags => self.tags.search(input),
             Selection::Branches => self.branches.search(input),
             Selection::Repositories => self.repositories.search(input),
+        }
+    }
+
+    pub fn reset_input(&mut self) {
+        self.input = String::new();
+        self.input_mode = InputMode::Normal;
+    }
+
+    pub fn run_command_with_path(&mut self) {
+        match Command::new(&self.input).arg(&self.get_selected_repository().path).output() {
+            Err(e) => { self.add_log(e.to_string()) },
+            _ => {}
         }
     }
 }

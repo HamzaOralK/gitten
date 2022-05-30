@@ -1,4 +1,4 @@
-use git2::{AutotagOption, FetchOptions, Remote, RemoteCallbacks, Repository};
+use git2::{AutotagOption, FetchOptions, FetchPrune, Remote, RemoteCallbacks, Repository};
 use crate::repo::git_credentials_callback;
 
 pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
@@ -124,8 +124,10 @@ pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repo
 }
 
 pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
-    let mut remote = repository.find_remote(remote_name).unwrap();
-    fetch_all(&mut remote)
+    match repository.find_remote(remote_name) {
+        Ok(mut remote) => fetch_all(&mut remote),
+        Err(e) => Err(git2::Error::from_str(e.message()))
+    }
 }
 
 pub fn fetch_all(remote: &mut Remote) -> Result<String, git2::Error> {
@@ -133,7 +135,8 @@ pub fn fetch_all(remote: &mut Remote) -> Result<String, git2::Error> {
     cb.credentials(git_credentials_callback);
     let mut fo = FetchOptions::new();
     fo.remote_callbacks(cb);
-    remote.download(&[] as &[&str], Some(&mut fo))?;
+    fo.prune(FetchPrune::On);
+    remote.fetch(&[] as &[&str], Some(&mut fo), Some("updating local"))?;
     remote.update_tips(None, true, AutotagOption::Unspecified, None)?;
     Ok(String::from("Fetching is done!"))
 }

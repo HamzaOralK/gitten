@@ -44,6 +44,25 @@ To search within the selections:
 /search <search-string>
 ```
 
+To run a command with the selected repository path:
+```shell
+$<command-string>
+```
+
+This I use to open a path in the desired application,
+```shell
+$code
+
+or 
+
+$idea
+
+or
+
+$open
+```
+
+
 ## Showcase
 ![](alfred.gif)
 
@@ -53,4 +72,5 @@ To search within the selections:
 - [X] Fetch remote
 - [X] Force pull
 - [X] Search within the selections
+- [X] Run commands with the path
 - [ ] Add tests

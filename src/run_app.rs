@@ -48,10 +48,13 @@ pub fn run_app<B: Backend>(
                             };
                         },
                         KeyCode::Char('/') => {
-                            if app.repositories.state.selected().is_some() {
-                                app.input_mode = InputMode::Search;
-                            };
+                            app.input_mode = InputMode::Search;
                         },
+                        KeyCode::Char('$') => {
+                            if app.selection == Selection::Repositories {
+                                app.input_mode = InputMode::Command;
+                            }
+                        }
                         _ => {}
                     },
                     InputMode::Editing => match key.code {
@@ -65,8 +68,7 @@ pub fn run_app<B: Backend>(
                             app.process_input();
                         },
                         KeyCode::Esc => {
-                            app.input = String::new();
-                            app.input_mode = InputMode::Normal;
+                            app.reset_input();
                         }
                         _ => {}
                     },
@@ -78,13 +80,28 @@ pub fn run_app<B: Backend>(
                         KeyCode::Backspace => {
                             app.input.pop();
                         },
+                        KeyCode::Enter | KeyCode::Esc => {
+                            app.reset_input();
+                        },
+                        _ =>  {}
+                    },
+                    InputMode::Command => match key.code {
+                        KeyCode::Char(c) => {
+                            app.input.push(c);
+                            app.search();
+                        },
+                        KeyCode::Backspace => {
+                            app.input.pop();
+                        },
+                        KeyCode::Enter => {
+                            app.run_command_with_path();
+                            app.reset_input();
+                        },
                         KeyCode::Esc => {
-                            app.input = String::new();
-                            app.input_mode = InputMode::Normal;
+                            app.reset_input()
                         }
                         _ =>  {}
                     }
-
                 }
             }
         }
@@ -172,6 +189,10 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
             .block(create_block())
             .alignment(Alignment::Left),
         InputMode::Search => Paragraph::new(format!("Search > {}", &app.input))
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(create_block())
+            .alignment(Alignment::Left),
+        InputMode::Command => Paragraph::new(format!("Command > {}", &app.input))
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left)
