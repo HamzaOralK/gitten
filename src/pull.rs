@@ -113,14 +113,17 @@ pub fn do_merge<'a>(repo: &'a Repository, remote_branch: &str, fetch_commit: git
 }
 
 pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
-    let mut remote = repository.find_remote(remote_name).unwrap();
-
-    let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
-        do_merge(repository, remote_branch, fetch_commit)
-    } else {
-        Err(git2::Error::from_str("Could not find remote branch!"))
-    };
-    result
+    match repository.find_remote(remote_name) {
+        Ok(mut remote) => {
+            let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
+                do_merge(repository, remote_branch, fetch_commit)
+            } else {
+                Err(git2::Error::from_str("Could not find remote branch!"))
+            };
+            result
+        },
+        Err(_) => Err(git2::Error::from_str("Could not find remote branch!"))
+    }
 }
 
 pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
