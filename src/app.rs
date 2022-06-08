@@ -1,5 +1,6 @@
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
+use std::path::{PathBuf};
 use std::process::Command;
 use git2::{PushOptions, ResetType};
 use std::string::String;
@@ -38,6 +39,16 @@ pub struct AlfredRepositoryItem {
     pub is_repository: bool,
     pub active_branch_name: String,
     pub files_changed: usize,
+}
+
+impl AlfredRepositoryItem {
+    fn set_active_branch_name(&mut self, name: String) {
+        self.active_branch_name = name;
+    }
+
+    fn set_files_changed(&mut self, files_changed: usize) {
+        self.files_changed = files_changed;
+    }
 }
 
 impl Display for AlfredRepositoryItem {
@@ -164,6 +175,7 @@ pub struct App {
     pub input: String,
     pub input_mode: InputMode,
     pub logs: StatefulList<String>,
+    pub path: String
 }
 
 impl App {
@@ -171,7 +183,7 @@ impl App {
         let mut content = Vec::new();
         let path = std::env::args().nth(1).unwrap_or_else(|| "./".to_string());
 
-        App::generate_repository_content(path, &mut content);
+        App::generate_application_content(&path, &mut content);
 
         App {
             selection: Selection::Repositories,
@@ -180,7 +192,8 @@ impl App {
             tags: StatefulList::with_items(vec![]),
             input: String::new(),
             input_mode: InputMode::Normal,
-            logs: StatefulList::with_items(vec![])
+            logs: StatefulList::with_items(vec![]),
+            path
         }
     }
 
@@ -189,6 +202,7 @@ impl App {
     }
 
     pub fn on_tick(&mut self) {
+        self.update_application_content();
     }
 
     pub fn next(&mut self) {
@@ -383,7 +397,7 @@ impl App {
         }
     }
 
-    fn generate_repository_content(path: String, content: &mut Vec<AlfredRepositoryItem>) {
+    fn generate_application_content(path: &String, content: &mut Vec<AlfredRepositoryItem>) {
         let paths = fs::read_dir(path).unwrap();
 
         paths.for_each(|p| {
@@ -406,6 +420,25 @@ impl App {
         content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
     }
 
+    fn update_application_content(&mut self) {
+        self.repositories.items.iter_mut().for_each(|f| {
+            let repository = get_repository(&f.path);
+            let mut is_repository = false;
+            let mut active_branch_name = String::new();
+
+            if repository.is_some() {
+                is_repository = true;
+                active_branch_name = get_repository_active_branch(&repository);
+            }
+
+            let files_changed = get_files_changed(&repository).unwrap_or(0);
+            if f.is_repository != is_repository || f.active_branch_name != active_branch_name {
+                f.set_active_branch_name(active_branch_name);
+                f.set_files_changed(files_changed);
+            };
+        });
+    }
+
     fn get_selected_repository(&mut self) -> &mut AlfredRepositoryItem {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
@@ -425,7 +458,12 @@ impl App {
     }
 
     fn add_log(&mut self, message: String) {
-        self.logs.items.push(format!("{} - {}", self.get_repository_info(), message));
+        if self.repositories.state.selected().is_some() {
+            self.logs.items.push(format!("{} - {}", self.get_repository_info(), message));
+        } else {
+            self.logs.items.push(message);
+        }
+
         self.logs.state.select(Some(self.logs.items.len()));
     }
 
@@ -457,9 +495,8 @@ impl App {
     }
 
     pub fn run_command_with_path(&mut self) {
-        match Command::new(&self.input).arg(&self.get_selected_repository().path).output() {
-            Err(e) => { self.add_log(e.to_string()) },
-            _ => {}
+        if let Err(e) = Command::new(&self.input).arg(&self.get_selected_repository().path).output() {
+            self.add_log(e.to_string())
         }
     }
 }

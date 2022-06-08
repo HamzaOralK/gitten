@@ -24,7 +24,7 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     let app = App::new();
-    let _ = run_app(&mut terminal, app, Duration::from_millis(1000));
+    let _ = run_app(&mut terminal, app, Duration::from_millis(5000));
 
     disable_raw_mode()?;
     execute!(
