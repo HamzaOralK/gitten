@@ -10,6 +10,9 @@ tui = "0.18"
 crossterm = "0.23"
 git2 = "0.14"
 dirs = "4.0.0"
+crossbeam-channel = "0.4.0"
+notify = "5.0.0-pre.15"
+futures = "0.3.21"
 
 [profile.release]
 opt-level = 3

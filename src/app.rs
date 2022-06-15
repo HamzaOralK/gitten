@@ -1,9 +1,11 @@
 use std::{fmt, fs};
 use std::fmt::{Debug, Display, Formatter};
-use std::path::{PathBuf};
+use std::path::{Path};
 use std::process::Command;
 use git2::{PushOptions, ResetType};
 use std::string::String;
+use futures::channel::mpsc::{channel, Sender, Receiver};
+use notify::Event;
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
@@ -175,7 +177,8 @@ pub struct App {
     pub input: String,
     pub input_mode: InputMode,
     pub logs: StatefulList<String>,
-    pub path: String
+    pub path: String,
+    pub channels: (Sender<notify::Result<Event>>, Receiver<notify::Result<Event>>)
 }
 
 impl App {
@@ -185,6 +188,8 @@ impl App {
 
         App::generate_application_content(&path, &mut content);
 
+        let (tx, rx): (Sender<notify::Result<Event>>, Receiver<notify::Result<Event>>) = channel(1);
+
         App {
             selection: Selection::Repositories,
             repositories: StatefulList::with_items(content),
@@ -193,7 +198,8 @@ impl App {
             input: String::new(),
             input_mode: InputMode::Normal,
             logs: StatefulList::with_items(vec![]),
-            path
+            path,
+            channels: (tx, rx)
         }
     }
 
@@ -201,9 +207,7 @@ impl App {
         self.selection = s;
     }
 
-    pub fn on_tick(&mut self) {
-        self.update_application_content();
-    }
+    pub fn on_tick(&mut self) { }
 
     pub fn next(&mut self) {
         match self.selection {
@@ -422,22 +426,24 @@ impl App {
         });
     }
 
-    fn update_application_content(&mut self) {
+    pub fn update_application_content(&mut self, path: &Path) {
         self.repositories.items.iter_mut().for_each(|f| {
-            let repository = get_repository(&f.path);
-            let mut is_repository = false;
-            let mut active_branch_name = String::new();
+            if path.to_str().unwrap().contains(&f.path) {
+                let repository = get_repository(&f.path);
+                let mut is_repository = false;
+                let mut active_branch_name = String::new();
 
-            if repository.is_some() {
-                is_repository = true;
-                active_branch_name = get_repository_active_branch(&repository);
+                if repository.is_some() {
+                    is_repository = true;
+                    active_branch_name = get_repository_active_branch(&repository);
+                }
+
+                let files_changed = get_files_changed(&repository).unwrap_or(0);
+                if f.is_repository != is_repository || f.active_branch_name != active_branch_name || f.files_changed != files_changed {
+                    f.set_active_branch_name(active_branch_name);
+                    f.set_files_changed(files_changed);
+                };
             }
-
-            let files_changed = get_files_changed(&repository).unwrap_or(0);
-            if f.is_repository != is_repository || f.active_branch_name != active_branch_name {
-                f.set_active_branch_name(active_branch_name);
-                f.set_files_changed(files_changed);
-            };
         });
     }
 

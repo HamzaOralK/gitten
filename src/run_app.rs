@@ -2,6 +2,8 @@ use std::{io};
 use std::time::{Duration, Instant};
 use crossterm::event;
 use crossterm::event::{Event, KeyCode};
+use futures::SinkExt;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use tui::backend::Backend;
 use tui::{Frame, Terminal};
 use tui::widgets::{Paragraph};
@@ -22,7 +24,22 @@ pub fn run_app<B: Backend>(
     tick_rate: Duration
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
+
+    let mut channels = app.channels.0.clone();
+
+    let mut watcher = RecommendedWatcher::new(move |res| {
+        futures::executor::block_on( async {
+            channels.send(res).await.unwrap();
+        });
+    }).unwrap();
+
+    watcher.watch(app.path.as_ref(), RecursiveMode::Recursive).unwrap();
+
     loop {
+        if let Ok(Some(Ok(event))) = &app.channels.1.try_next() {
+            app.update_application_content(event.paths.get(0).unwrap());
+        };
+
         terminal.draw(|f| {
             ui( f, &mut app);
         })?;
