@@ -61,7 +61,13 @@ pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<String> {
 pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
     let mut branch_id: String = "".to_string();
     if let Some(r) = repository {
-        branch_id = r.head().unwrap().name().unwrap().replace("refs/heads/", "")
+        if let Ok(head) = r.head() {
+            if let Some(name) = head.name() {
+                branch_id = name.replace("refs/heads/", "")
+            }
+        } else {
+            branch_id = "empty".to_string()
+        }
     }
     branch_id
 }
