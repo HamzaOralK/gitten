@@ -82,4 +82,5 @@ $open
 - [X] Force pull
 - [X] Search within the selections
 - [X] Run commands with the path
+- [X] Watch for folder changes
 - [ ] Add tests
