@@ -35,7 +35,7 @@ impl Display for Selection {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct AlfredRepositoryItem {
+pub struct GittenRepositoryItem {
     pub path: String,
     pub folder_name: String,
     pub is_repository: bool,
@@ -43,7 +43,7 @@ pub struct AlfredRepositoryItem {
     pub files_changed: usize,
 }
 
-impl AlfredRepositoryItem {
+impl GittenRepositoryItem {
     fn set_active_branch_name(&mut self, name: String) {
         self.active_branch_name = name;
     }
@@ -53,13 +53,13 @@ impl AlfredRepositoryItem {
     }
 }
 
-impl Display for AlfredRepositoryItem {
+impl Display for GittenRepositoryItem {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.folder_name)
     }
 }
 
-impl ConvertableToListItem for AlfredRepositoryItem {
+impl ConvertableToListItem for GittenRepositoryItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem {
         let mut lines: Spans = Spans::default();
         let mut line_color = Color::Reset;
@@ -87,9 +87,9 @@ impl ConvertableToListItem for AlfredRepositoryItem {
     }
 }
 
-type AlfredStringItems = String;
+type GittenStringItems = String;
 
-impl ConvertableToListItem for AlfredStringItems {
+impl ConvertableToListItem for GittenStringItems {
     fn convert_to_list_item(&self, _chunk: Option<&Rect>) -> ListItem {
         ListItem::new(vec![
             Spans::from(vec![
@@ -171,9 +171,9 @@ impl<T: Clone + Display> StatefulList<T> {
 
 pub struct App {
     pub selection: Selection,
-    pub repositories: StatefulList<AlfredRepositoryItem>,
-    pub branches: StatefulList<AlfredStringItems>,
-    pub tags: StatefulList<AlfredStringItems>,
+    pub repositories: StatefulList<GittenRepositoryItem>,
+    pub branches: StatefulList<GittenStringItems>,
+    pub tags: StatefulList<GittenStringItems>,
     pub input: String,
     pub input_mode: InputMode,
     pub logs: StatefulList<String>,
@@ -401,7 +401,7 @@ impl App {
         }
     }
 
-    fn generate_application_content(path: &String, content: &mut Vec<AlfredRepositoryItem>) {
+    fn generate_application_content(path: &String, content: &mut Vec<GittenRepositoryItem>) {
         let paths = fs::read_dir(path).unwrap();
 
         paths.for_each(|p| {
@@ -411,7 +411,7 @@ impl App {
                 let active_branch_name = get_repository_active_branch(&repository);
                 let files_changed = get_files_changed(&repository).unwrap_or(0);
                 content.push(
-                    AlfredRepositoryItem {
+                    GittenRepositoryItem {
                         path: dir.path().to_str().unwrap().to_string(),
                         folder_name: dir.file_name().into_string().unwrap(),
                         is_repository: is_repository(dir.path()),
@@ -447,7 +447,7 @@ impl App {
         });
     }
 
-    fn get_selected_repository(&mut self) -> &mut AlfredRepositoryItem {
+    fn get_selected_repository(&mut self) -> &mut GittenRepositoryItem {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
 

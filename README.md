@@ -1,7 +1,7 @@
-# Alfred
-Alfred is git project manager with multiple repositories.
+# Gitten
+Gitten is git project manager with multiple repositories.
 
-With alfred you can check out to new branches and tag branches from you active.
+With gitten you can check out to new branches and tag branches from you active.
 
 ## Prerequisite
 To build one has to have OpenSSL installed and adjust config.toml file accordingly to be able to run and 
@@ -14,7 +14,7 @@ brew install openssl@3
 
 ## Run
 ```shell
-cargo run <path to open in alfred with git projects inside>
+cargo run <path to open in gitten with git projects inside>
 ```
 
 ## Usage
@@ -73,7 +73,7 @@ $open
 
 
 ## Showcase
-![](alfred.gif)
+![](gitten.gif)
 
 ## TODO
 - [X] Push to remote with tags or not
