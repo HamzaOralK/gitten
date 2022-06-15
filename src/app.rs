@@ -417,7 +417,9 @@ impl App {
                 );
             }
         });
-        content.sort_by(|a, b| b.folder_name.cmp(&a.folder_name));
+        content.sort_by(|a, b| {
+            a.folder_name.to_lowercase().cmp(&b.folder_name.to_lowercase())
+        });
     }
 
     fn update_application_content(&mut self) {
