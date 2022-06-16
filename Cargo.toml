@@ -10,6 +10,7 @@ homepage = "https://github.com/okhuz/gitten"
 repository = "https://github.com/okhuz/gitten"
 keywords = ["git", "tui"]
 categories = ["command-line-utilities"]
+exclude = ["*.gif"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
