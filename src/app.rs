@@ -182,9 +182,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> App {
+    pub fn new(path: String) -> App {
         let mut content = Vec::new();
-        let path = std::env::args().nth(1).unwrap_or_else(|| "./".to_string());
 
         App::generate_application_content(&path, &mut content);
 

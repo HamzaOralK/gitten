@@ -1,6 +1,6 @@
 [package]
 name = "gitten"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["okhuz <haoralk@email.com>"]
 license = "MIT"
@@ -26,3 +26,4 @@ futures = "0.3.21"
 [profile.release]
 opt-level = 3
 debug = true
+panic = 'abort'
