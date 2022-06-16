@@ -1,7 +1,15 @@
 [package]
 name = "gitten"
-version = "0.2.0"
+version = "0.2.2"
 edition = "2021"
+authors = ["okhuz <haoralk@email.com>"]
+license = "MIT"
+description = "A tool to manage git projects in a folder"
+readme = "README.md"
+homepage = "https://github.com/okhuz/gitten"
+repository = "https://github.com/okhuz/gitten"
+keywords = ["git", "tui"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
