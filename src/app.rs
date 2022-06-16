@@ -236,33 +236,37 @@ impl App {
             f.to_owned()
         }).collect();
 
+
+
         if self.get_selected_repository().is_repository {
-            match self.selection {
-                Selection::Repositories => {
-                    match commands[0].as_ref() {
-                        "co" => { let _ = self.checkout_to_branch(commands.get(1) ); },
-                        "tag" => { let _ = self.create_tag(commands.get(1)); },
-                        "rh" => { let _ = self.reset_selected_repository(ResetType::Hard); },
-                        "pull" => { let _ = self.pull_remote(commands.get(1)); }
-                        "fetch" => { let _ = self.fetch_remote(commands.get(1)); }
-                        _ => { self.add_log("Unknown command!".to_string()) }
-                    }
-                },
-                Selection::Branches => {
-                    match commands[0].as_ref() {
-                        "push" => { let _ = self.push_remote(commands.get(1), true); },
-                        _ => { self.add_log("Unknown command!".to_string()) }
-                    }
-                },
-                Selection::Tags => {
-                    match commands[0].as_ref() {
-                        "push" => { let _ = self.push_remote(commands.get(1), false); },
-                        _ => { self.add_log("Unknown command!".to_string()) }
+            if !commands.is_empty() {
+                match self.selection {
+                    Selection::Repositories => {
+                        match commands[0].as_ref() {
+                            "co" => { let _ = self.checkout_to_branch(commands.get(1) ); },
+                            "tag" => { let _ = self.create_tag(commands.get(1)); },
+                            "rh" => { let _ = self.reset_selected_repository(ResetType::Hard); },
+                            "pull" => { let _ = self.pull_remote(commands.get(1)); }
+                            "fetch" => { let _ = self.fetch_remote(commands.get(1)); }
+                            _ => { self.add_log("Unknown command!".to_string()) }
+                        }
+                    },
+                    Selection::Branches => {
+                        match commands[0].as_ref() {
+                            "push" => { let _ = self.push_remote(commands.get(1), true); },
+                            _ => { self.add_log("Unknown command!".to_string()) }
+                        }
+                    },
+                    Selection::Tags => {
+                        match commands[0].as_ref() {
+                            "push" => { let _ = self.push_remote(commands.get(1), false); },
+                            _ => { self.add_log("Unknown command!".to_string()) }
+                        }
                     }
                 }
             }
-            self.input_mode = InputMode::Normal;
         }
+        self.input_mode = InputMode::Normal;
     }
 
     fn push_remote(&mut self, remote: Option<&String>, is_branch: bool) {
@@ -447,7 +451,7 @@ impl App {
         });
     }
 
-    fn get_selected_repository(&mut self) -> &mut GittenRepositoryItem {
+    pub fn get_selected_repository(&mut self) -> &mut GittenRepositoryItem {
         &mut self.repositories.items[self.repositories.state.selected().unwrap()]
     }
 
@@ -480,9 +484,16 @@ impl App {
         format!("{} - {}", r.folder_name, r.active_branch_name)
     }
 
-    pub fn generate_help(&self) -> String {
+    pub fn generate_help(&mut self) -> String {
         match self.selection {
-            Selection::Repositories => String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | q"),
+            Selection::Repositories => {
+                if self.get_selected_repository().is_repository {
+                    String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | q")
+                } else {
+                    String::from("No operation for non repository item.")
+                }
+
+            },
             Selection::Branches => String::from(":push <remote> | q"),
             Selection::Tags => String::from(":push <remote> | q"),
         }

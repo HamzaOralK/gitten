@@ -60,7 +60,7 @@ pub fn run_app<B: Backend>(
                         KeyCode::Char('t') => app.change_selection(Selection::Tags),
                         KeyCode::Char('b') => app.change_selection(Selection::Branches),
                         KeyCode::Char(':') => {
-                            if app.repositories.state.selected().is_some() {
+                            if app.get_selected_repository().is_repository {
                                 app.input_mode = InputMode::Editing;
                             };
                         },
