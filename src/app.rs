@@ -490,7 +490,7 @@ impl App {
                 if self.get_selected_repository().is_repository {
                     String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | q")
                 } else {
-                    String::from("No operation for non repository item.")
+                    String::from("No operation for non repository item | q")
                 }
 
             },
