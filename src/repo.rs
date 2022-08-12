@@ -1,7 +1,11 @@
-use std::path::PathBuf;
 use git2::{Cred, CredentialType, Repository};
+use std::path::PathBuf;
 
-pub fn git_credentials_callback(_url: &str, user_from_url: Option<&str>, cred_types_allowed: CredentialType) -> Result<Cred, git2::Error> {
+pub fn git_credentials_callback(
+    _url: &str,
+    user_from_url: Option<&str>,
+    cred_types_allowed: CredentialType,
+) -> Result<Cred, git2::Error> {
     let user = user_from_url.unwrap();
 
     if cred_types_allowed.contains(CredentialType::SSH_KEY) {
@@ -16,14 +20,14 @@ pub fn git_credentials_callback(_url: &str, user_from_url: Option<&str>, cred_ty
 pub fn is_repository(path: PathBuf) -> bool {
     match Repository::open(path) {
         Ok(_repo) => true,
-        _error => false
+        _error => false,
     }
 }
 
 pub fn get_repository(path: &String) -> Option<Repository> {
     match Repository::open(path) {
         Ok(repo) => Some(repo),
-        Err(_e) => None
+        Err(_e) => None,
     }
 }
 
@@ -47,7 +51,7 @@ pub fn get_repository_branches(repository: &Option<Repository>) -> Vec<String> {
     if let Some(r) = repository {
         let branches = match r.branches(None) {
             Ok(branches) => Some(branches),
-            Err(_) => None
+            Err(_) => None,
         };
 
         branches.unwrap().for_each(|b| {
@@ -75,9 +79,9 @@ pub fn get_repository_active_branch(repository: &Option<Repository>) -> String {
 pub fn get_files_changed(repository: &Option<Repository>) -> Option<usize> {
     if let Some(r) = repository {
         return match r.diff_index_to_workdir(None, None) {
-            Ok(diff) => { Some(diff.stats().unwrap().files_changed()) },
-            Err(_e) => None
-        }
+            Ok(diff) => Some(diff.stats().unwrap().files_changed()),
+            Err(_e) => None,
+        };
     } else {
         None
     }

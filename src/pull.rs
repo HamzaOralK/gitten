@@ -1,8 +1,11 @@
-use git2::{AutotagOption, FetchOptions, FetchPrune, Remote, RemoteCallbacks, Repository};
 use crate::repo::git_credentials_callback;
+use git2::{AutotagOption, FetchOptions, FetchPrune, Remote, RemoteCallbacks, Repository};
 
-pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
-
+pub fn do_fetch<'a>(
+    repo: &'a Repository,
+    refs: &[&str],
+    remote: &'a mut Remote,
+) -> Result<git2::AnnotatedCommit<'a>, git2::Error> {
     let mut cb = RemoteCallbacks::new();
 
     cb.credentials(git_credentials_callback);
@@ -19,7 +22,11 @@ pub fn do_fetch<'a>(repo: &'a Repository, refs: &[&str], remote: &'a mut Remote)
     Ok(repo.reference_to_annotated_commit(&fetch_head).unwrap())
 }
 
-fn fast_forward(repo: &Repository, lb: &mut git2::Reference, rc: &git2::AnnotatedCommit, ) -> Result<(), git2::Error> {
+fn fast_forward(
+    repo: &Repository,
+    lb: &mut git2::Reference,
+    rc: &git2::AnnotatedCommit,
+) -> Result<(), git2::Error> {
     let name = match lb.name() {
         Some(s) => s.to_string(),
         None => String::from_utf8_lossy(lb.name_bytes()).to_string(),
@@ -37,7 +44,11 @@ fn fast_forward(repo: &Repository, lb: &mut git2::Reference, rc: &git2::Annotate
     Ok(())
 }
 
-fn normal_merge(repo: &Repository, local: &git2::AnnotatedCommit, remote: &git2::AnnotatedCommit, ) -> Result<(), git2::Error> {
+fn normal_merge(
+    repo: &Repository,
+    local: &git2::AnnotatedCommit,
+    remote: &git2::AnnotatedCommit,
+) -> Result<(), git2::Error> {
     let local_tree = repo.find_commit(local.id())?.tree()?;
     let remote_tree = repo.find_commit(remote.id())?.tree()?;
     let ancestor = repo
@@ -69,7 +80,11 @@ fn normal_merge(repo: &Repository, local: &git2::AnnotatedCommit, remote: &git2:
     Ok(())
 }
 
-pub fn do_merge<'a>(repo: &'a Repository, remote_branch: &str, fetch_commit: git2::AnnotatedCommit<'a>) -> Result<String, git2::Error> {
+pub fn do_merge<'a>(
+    repo: &'a Repository,
+    remote_branch: &str,
+    fetch_commit: git2::AnnotatedCommit<'a>,
+) -> Result<String, git2::Error> {
     let mut msg: &str = "";
     // 1. do a merge analysis
     let analysis = repo.merge_analysis(&[&fetch_commit])?;
@@ -112,24 +127,32 @@ pub fn do_merge<'a>(repo: &'a Repository, remote_branch: &str, fetch_commit: git
     Ok(msg.to_string())
 }
 
-pub fn fetch_repository_from_remote(remote_name: &str, remote_branch: &str, repository: &Repository) -> Result<String, git2::Error> {
+pub fn fetch_repository_from_remote(
+    remote_name: &str,
+    remote_branch: &str,
+    repository: &Repository,
+) -> Result<String, git2::Error> {
     match repository.find_remote(remote_name) {
         Ok(mut remote) => {
-            let result = if let Ok(fetch_commit) =  do_fetch(repository, &[remote_branch], &mut remote) {
-                do_merge(repository, remote_branch, fetch_commit)
-            } else {
-                Err(git2::Error::from_str("Could not find remote branch!"))
-            };
+            let result =
+                if let Ok(fetch_commit) = do_fetch(repository, &[remote_branch], &mut remote) {
+                    do_merge(repository, remote_branch, fetch_commit)
+                } else {
+                    Err(git2::Error::from_str("Could not find remote branch!"))
+                };
             result
-        },
-        Err(_) => Err(git2::Error::from_str("Could not find remote branch!"))
+        }
+        Err(_) => Err(git2::Error::from_str("Could not find remote branch!")),
     }
 }
 
-pub fn fetch_branches_repository_from_remote(remote_name: &str, repository: &Repository) -> Result<String, git2::Error> {
+pub fn fetch_branches_repository_from_remote(
+    remote_name: &str,
+    repository: &Repository,
+) -> Result<String, git2::Error> {
     match repository.find_remote(remote_name) {
         Ok(mut remote) => fetch_all(&mut remote),
-        Err(e) => Err(git2::Error::from_str(e.message()))
+        Err(e) => Err(git2::Error::from_str(e.message())),
     }
 }
 
