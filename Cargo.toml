@@ -1,6 +1,6 @@
 [package]
 name = "gitten"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 authors = ["okhuz <haoralk@email.com>"]
 license = "MIT"
@@ -13,13 +13,14 @@ categories = ["command-line-utilities"]
 exclude = ["*.gif"]
 
 [dependencies]
-tui = "0.18"
+tui = "0.19.0"
 crossterm = "0.25.0"
 git2 = "0.15.0"
 dirs = "4.0.0"
 crossbeam-channel = "0.5.6"
 notify = "5.0.0-pre.15"
 futures = "0.3.21"
+chrono = "0.4"
 
 [profile.release]
 opt-level = 3

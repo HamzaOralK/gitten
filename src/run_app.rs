@@ -1,4 +1,4 @@
-use crate::app::{InputMode, Selection};
+use crate::app::{InputMode, Logs, Selection};
 use crate::utility::{centered_rect, create_block, create_block_with_selection, create_block_with_title, create_selection_list_from_vector};
 use crate::App;
 use crossterm::event;
@@ -12,6 +12,8 @@ use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::widgets::{Block, Borders, Clear, Paragraph};
 use tui::{Frame, Terminal};
+use tui::text::{Span, Text};
+use crate::log::print_log;
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
@@ -57,7 +59,11 @@ pub fn run_app<B: Backend>(
                         KeyCode::Left => app.repositories.unselect(),
                         KeyCode::Down => app.next(),
                         KeyCode::Up => app.previous(),
-                        KeyCode::Char('l') => app.toggle_commit_logs(),
+                        KeyCode::Char('l') => {
+                            if app.repositories.state.selected().is_some() && app.get_selected_repository().is_repository {
+                                app.input_mode = InputMode::Logs
+                            }
+                        },
                         KeyCode::Char('r') => app.change_selection(Selection::Repositories),
                         KeyCode::Char('t') => app.change_selection(Selection::Tags),
                         KeyCode::Char('b') => app.change_selection(Selection::Branches),
@@ -122,6 +128,12 @@ pub fn run_app<B: Backend>(
                         KeyCode::Esc => app.reset_input(),
                         _ => {}
                     },
+                    InputMode::Logs => match key.code {
+                        KeyCode::Down => { app.scroll_logs_down() },
+                        KeyCode::Up => { app.scroll_logs_up(); },
+                        KeyCode::Char('q') | KeyCode::Char('l') | KeyCode::Esc => { app.reset_input(); },
+                        _ => {}
+                    }
                 }
             }
         }
@@ -186,19 +198,43 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
     );
     f.render_stateful_widget(branch_list, right_chunks[1], &mut app.branches.state);
 
+    if app.input_mode == InputMode::Logs {
+        let block = Block::default().title("Logs").borders(Borders::ALL);
+        let area = centered_rect(90, 90, size);
+        f.render_widget(Clear, area); //this clears out the background
+
+        let paragraph = if let Some(logs) = &app.repository_logs {
+            Paragraph::new(Text::from(logs.log.clone())).scroll(logs.offset).block(block)
+        } else {
+            app.repository_logs = Some(Logs{
+                log: if let Ok(logs) = print_log(&app.get_selected_repository().path) {
+                    logs
+                } else {
+                    "No logs".to_owned()
+                },
+                offset: (0, 0)
+            });
+
+            if let Some(logs) = &app.repository_logs {
+                Paragraph::new(Text::from(logs.log.clone())).scroll(logs.offset)
+            } else {
+                Paragraph::new("No logs")
+            }.block(block)
+        };
+        f.render_widget(
+            paragraph,
+            area
+        );
+    } else {
+        app.repository_logs = None;
+    }
+
+    // Info at the bottom
     let help = match app.repositories.state.selected() {
         Some(_) => app.generate_help(),
         _ => String::new(),
     };
 
-    if app.show_commit_logs {
-        let block = Block::default().title("Popup").borders(Borders::ALL);
-        let area = centered_rect(90, 90, size);
-        f.render_widget(Clear, area); //this clears out the background
-        f.render_widget(block, area);
-    }
-
-    // Info at the bottom
     let info = match app.input_mode {
         InputMode::Normal => Paragraph::new(help)
             .style(Style::default().bg(Color::White).fg(Color::Black))
@@ -215,6 +251,10 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
             .block(create_block())
             .alignment(Alignment::Left),
         InputMode::Command => Paragraph::new(format!("Command > {}", &app.input))
+            .style(Style::default().bg(Color::White).fg(Color::Black))
+            .block(create_block())
+            .alignment(Alignment::Left),
+        InputMode::Logs => Paragraph::new(format!("Logs"))
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left),

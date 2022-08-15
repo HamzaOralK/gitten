@@ -7,14 +7,14 @@ use futures::channel::mpsc::{channel, Receiver, Sender};
 use git2::{PushOptions, ResetType};
 use notify::Event;
 use std::fmt::{Debug, Display, Formatter};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::string::String;
 use std::{fmt, fs};
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{ListItem, ListState};
+use tui::widgets::{ListItem, ListState, Paragraph};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -43,7 +43,7 @@ impl Display for Selection {
 
 #[derive(Debug, Default)]
 pub struct GittenRepositoryItem {
-    pub path: String,
+    pub path: PathBuf,
     pub folder_name: String,
     pub is_repository: bool,
     pub active_branch_name: String,
@@ -119,6 +119,7 @@ pub enum InputMode {
     Editing,
     Search,
     Command,
+    Logs
 }
 
 pub struct StatefulList<T> {
@@ -187,6 +188,24 @@ impl<T: Display> StatefulList<T> {
     }
 }
 
+#[derive(Clone)]
+pub struct Logs {
+    pub log: String,
+    pub offset: (u16, u16)
+}
+
+impl Logs {
+    pub fn scroll_down(&mut self) {
+        self.offset.0 = self.offset.0 + 1;
+    }
+
+    pub fn scroll_up(&mut self) {
+        if self.offset.0 > 0 {
+            self.offset.0 = self.offset.0 - 1;
+        }
+    }
+}
+
 pub struct App {
     pub selection: Selection,
     pub repositories: StatefulList<GittenRepositoryItem>,
@@ -196,7 +215,7 @@ pub struct App {
     pub input_mode: InputMode,
     pub logs: StatefulList<String>,
     pub path: String,
-    pub show_commit_logs: bool,
+    pub repository_logs: Option<Logs>,
     pub channels: (
         Sender<notify::Result<Event>>,
         Receiver<notify::Result<Event>>,
@@ -222,7 +241,7 @@ impl App {
             input: String::new(),
             input_mode: InputMode::Normal,
             logs: StatefulList::with_items(vec![]),
-            show_commit_logs: false,
+            repository_logs: None,
             path,
             channels: (tx, rx),
         }
@@ -465,11 +484,11 @@ impl App {
         paths.for_each(|p| {
             let dir = p.unwrap();
             if !dir.file_name().to_str().unwrap().starts_with('.') {
-                let repository = get_repository(&dir.path().to_str().unwrap().to_string());
+                let repository = get_repository(&dir.path());
                 let active_branch_name = get_repository_active_branch(&repository);
                 let files_changed = get_files_changed(&repository).unwrap_or(0);
                 content.push(GittenRepositoryItem {
-                    path: dir.path().to_str().unwrap().to_string(),
+                    path: fs::canonicalize(&dir.path()).unwrap(),
                     folder_name: dir.file_name().into_string().unwrap(),
                     is_repository: is_repository(dir.path()),
                     active_branch_name,
@@ -486,8 +505,7 @@ impl App {
 
     pub fn update_application_content(&mut self, path: &Path) {
         self.repositories.items.iter_mut().for_each(|f| {
-            let folder_name = f.path.to_owned().split('/').into_iter().last().unwrap().to_owned();
-            if path.to_str().unwrap().contains(&folder_name) {
+            if path.to_str().unwrap().contains(&f.path.to_str().unwrap()) {
                 let repository = get_repository(&f.path);
                 let mut is_repository = false;
                 let mut active_branch_name = String::new();
@@ -578,7 +596,15 @@ impl App {
         }
     }
 
-    pub fn toggle_commit_logs(&mut self) {
-        self.show_commit_logs = !self.show_commit_logs
+    pub fn scroll_logs_up(&mut self) {
+        if let Some(logs) = &mut self.repository_logs {
+            logs.scroll_up()
+        }
+    }
+
+    pub fn scroll_logs_down(&mut self) {
+        if let Some(logs) = &mut self.repository_logs {
+            logs.scroll_down()
+        }
     }
 }

@@ -1,12 +1,16 @@
 use git2::{Cred, CredentialType, Repository};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn git_credentials_callback(
     _url: &str,
     user_from_url: Option<&str>,
     cred_types_allowed: CredentialType,
 ) -> Result<Cred, git2::Error> {
-    let user = user_from_url.unwrap();
+    let user = if let Some(usr) = user_from_url {
+        usr
+    } else {
+        return Err(git2::Error::from_str("no credential option available"))
+    };
 
     if cred_types_allowed.contains(CredentialType::SSH_KEY) {
         let private_key = dirs::home_dir().unwrap().join(".ssh").join("id_rsa");
@@ -24,7 +28,7 @@ pub fn is_repository(path: PathBuf) -> bool {
     }
 }
 
-pub fn get_repository(path: &String) -> Option<Repository> {
+pub fn get_repository(path: &PathBuf) -> Option<Repository> {
     match Repository::open(path) {
         Ok(repo) => Some(repo),
         Err(_e) => None,
