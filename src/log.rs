@@ -19,7 +19,7 @@ pub fn print_log(path: &PathBuf) -> Result<String, Error> {
         };
     }
     let revwalk = revwalk
-        .filter_map(|id| {
+        .map(|id| {
             let id = filter_try!(id);
             let commit = filter_try!(repo.find_commit(id));
             Some(Ok(commit))
@@ -29,8 +29,8 @@ pub fn print_log(path: &PathBuf) -> Result<String, Error> {
     let mut log = String::new();
     // print!
     for commit in revwalk {
-        let commit = commit?;
-        log.push_str(format!("{}", print_commit(&commit)).as_str());
+        let commit = commit.unwrap();
+        log.push_str(print_commit(&commit.unwrap()).as_str());
     }
 
     Ok(log)
@@ -41,28 +41,28 @@ fn print_commit(commit: &Commit) -> String {
     commit_message.push_str(format!("commit {}", commit.id()).as_str());
 
     if commit.parents().len() > 1 {
-        commit_message.push_str(format!("\n").as_str());
-        commit_message.push_str(format!("Merge:").as_str());
+        commit_message.push('\n');
+        commit_message.push_str("Merge:");
         for id in commit.parent_ids() {
             commit_message.push_str(format!(" {:.8}", id).as_str());
         }
-        commit_message.push_str(format!("\n").as_str());
+        commit_message.push('\n');
     } else {
-        commit_message.push_str(format!("\n").as_str());
+        commit_message.push('\n');
     }
 
     let author = commit.author();
     commit_message.push_str(format!("Author: {}", author).as_str());
-    commit_message.push_str(format!("\n").as_str());
+    commit_message.push('\n');
     commit_message.push_str(print_time(&author.when(), "Date:   ").as_str());
-    commit_message.push_str(format!("\n").as_str());
+    commit_message.push('\n');
 
     for line in String::from_utf8_lossy(commit.message_bytes()).lines() {
         commit_message.push_str(format!("    {}", line).as_str());
-        commit_message.push_str(format!("\n").as_str());
+        commit_message.push('\n');
     }
-    commit_message.push_str(format!("\n").as_str());
-    return commit_message
+    commit_message.push('\n');
+    commit_message
 }
 
 fn print_time(time: &Time, prefix: &str) -> String {
@@ -79,7 +79,7 @@ fn print_time(time: &Time, prefix: &str) -> String {
     return format!(
         "{}{} {}{:02}{:02}",
         prefix,
-        time.to_string(),
+        time,
         sign,
         hours,
         minutes

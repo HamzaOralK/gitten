@@ -14,7 +14,7 @@ use std::{fmt, fs};
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{ListItem, ListState, Paragraph};
+use tui::widgets::{ListItem, ListState};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -196,12 +196,12 @@ pub struct Logs {
 
 impl Logs {
     pub fn scroll_down(&mut self) {
-        self.offset.0 = self.offset.0 + 1;
+        self.offset.0 += 1;
     }
 
     pub fn scroll_up(&mut self) {
         if self.offset.0 > 0 {
-            self.offset.0 = self.offset.0 - 1;
+            self.offset.0 -= 1;
         }
     }
 }

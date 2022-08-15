@@ -1,5 +1,5 @@
 use git2::{Cred, CredentialType, Repository};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 pub fn git_credentials_callback(
     _url: &str,

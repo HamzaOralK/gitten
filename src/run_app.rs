@@ -12,7 +12,7 @@ use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Style};
 use tui::widgets::{Block, Borders, Clear, Paragraph};
 use tui::{Frame, Terminal};
-use tui::text::{Span, Text};
+use tui::text::{Text};
 use crate::log::print_log;
 
 pub fn run_app<B: Backend>(
@@ -254,7 +254,7 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left),
-        InputMode::Logs => Paragraph::new(format!("Logs"))
+        InputMode::Logs => Paragraph::new("Logs".to_string())
             .style(Style::default().bg(Color::White).fg(Color::Black))
             .block(create_block())
             .alignment(Alignment::Left),
