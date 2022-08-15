@@ -41,7 +41,7 @@ impl Display for Selection {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct GittenRepositoryItem {
     pub path: String,
     pub folder_name: String,
@@ -126,7 +126,7 @@ pub struct StatefulList<T> {
     pub items: Vec<T>,
 }
 
-impl<T: Clone + Display> StatefulList<T> {
+impl<T: Display> StatefulList<T> {
     fn with_items(items: Vec<T>) -> StatefulList<T> {
         StatefulList {
             state: ListState::default(),
