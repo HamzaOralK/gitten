@@ -1,17 +1,20 @@
-use std::{fmt, fs};
-use std::fmt::{Debug, Display, Formatter};
-use std::path::{Path};
-use std::process::Command;
+use crate::pull::{fetch_branches_repository_from_remote, fetch_repository_from_remote};
+use crate::repo::{
+    get_files_changed, get_repository, get_repository_active_branch, get_repository_branches,
+    get_repository_tags, git_credentials_callback, is_repository,
+};
+use futures::channel::mpsc::{channel, Receiver, Sender};
 use git2::{PushOptions, ResetType};
-use std::string::String;
-use futures::channel::mpsc::{channel, Sender, Receiver};
 use notify::Event;
+use std::fmt::{Debug, Display, Formatter};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::string::String;
+use std::{fmt, fs};
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{ListItem, ListState};
-use crate::pull::{fetch_branches_repository_from_remote, fetch_repository_from_remote};
-use crate::repo::{get_files_changed, get_repository, get_repository_active_branch, get_repository_branches, get_repository_tags, git_credentials_callback, is_repository};
+use tui::widgets::{ListItem, ListState, Paragraph};
 
 pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
@@ -21,22 +24,26 @@ pub trait ConvertableToListItem {
 pub enum Selection {
     Repositories,
     Tags,
-    Branches
+    Branches,
 }
 
 impl Display for Selection {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            Selection::Repositories => "(R)epositories",
-            Selection::Tags => "(T)ags",
-            Selection::Branches => "(B)ranches"
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Selection::Repositories => "(R)epositories",
+                Selection::Tags => "(T)ags",
+                Selection::Branches => "(B)ranches",
+            }
+        )
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct GittenRepositoryItem {
-    pub path: String,
+    pub path: PathBuf,
     pub folder_name: String,
     pub is_repository: bool,
     pub active_branch_name: String,
@@ -68,16 +75,27 @@ impl ConvertableToListItem for GittenRepositoryItem {
             if self.files_changed > 0 {
                 margin += 1;
             }
-            let repeat_time = if chunk.unwrap().width > ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + margin) {
-                chunk.unwrap().width - ((self.active_branch_name.len() as u16) + (self.folder_name.len() as u16) + margin)
+            let repeat_time = if chunk.unwrap().width
+                > ((self.active_branch_name.len() as u16)
+                    + (self.folder_name.len() as u16)
+                    + margin)
+            {
+                chunk.unwrap().width
+                    - ((self.active_branch_name.len() as u16)
+                        + (self.folder_name.len() as u16)
+                        + margin)
             } else {
                 0
             };
             lines.0.push(Span::from(self.folder_name.clone()));
             lines.0.push(Span::from(" ".repeat((repeat_time) as usize)));
             lines.0.push(Span::raw("("));
-            lines.0.push(Span::from(self.active_branch_name.to_string()));
-            lines.0.push(Span::from(if self.files_changed > 0 { "*" } else { "" }));
+            lines
+                .0
+                .push(Span::from(self.active_branch_name.to_string()));
+            lines
+                .0
+                .push(Span::from(if self.files_changed > 0 { "*" } else { "" }));
             lines.0.push(Span::raw(")"));
             line_color = Color::Green
         } else {
@@ -87,15 +105,11 @@ impl ConvertableToListItem for GittenRepositoryItem {
     }
 }
 
-type GittenStringItems = String;
+type GittenStringItem = String;
 
-impl ConvertableToListItem for GittenStringItems {
+impl ConvertableToListItem for GittenStringItem {
     fn convert_to_list_item(&self, _chunk: Option<&Rect>) -> ListItem {
-        ListItem::new(vec![
-            Spans::from(vec![
-                Span::raw(self.to_string())
-            ])
-        ])
+        ListItem::new(vec![Spans::from(vec![Span::raw(self.to_string())])])
     }
 }
 
@@ -104,7 +118,8 @@ pub enum InputMode {
     Normal,
     Editing,
     Search,
-    Command
+    Command,
+    Logs
 }
 
 pub struct StatefulList<T> {
@@ -112,7 +127,7 @@ pub struct StatefulList<T> {
     pub items: Vec<T>,
 }
 
-impl<T: Clone + Display> StatefulList<T> {
+impl<T: Display> StatefulList<T> {
     fn with_items(items: Vec<T>) -> StatefulList<T> {
         StatefulList {
             state: ListState::default(),
@@ -151,7 +166,7 @@ impl<T: Clone + Display> StatefulList<T> {
                     0
                 }
             }
-            None => 0
+            None => 0,
         };
         self.state.select(Some(i));
     }
@@ -162,23 +177,49 @@ impl<T: Clone + Display> StatefulList<T> {
 
     pub fn search(&mut self, input: &str) {
         self.items.iter().enumerate().for_each(|(i, _x)| {
-            if self.items[i].to_string().to_lowercase().contains(&input.to_lowercase()) {
+            if self.items[i]
+                .to_string()
+                .to_lowercase()
+                .contains(&input.to_lowercase())
+            {
                 self.state.select(Some(i));
             }
         });
     }
 }
 
+#[derive(Clone)]
+pub struct Logs {
+    pub log: String,
+    pub offset: (u16, u16)
+}
+
+impl Logs {
+    pub fn scroll_down(&mut self) {
+        self.offset.0 = self.offset.0 + 1;
+    }
+
+    pub fn scroll_up(&mut self) {
+        if self.offset.0 > 0 {
+            self.offset.0 = self.offset.0 - 1;
+        }
+    }
+}
+
 pub struct App {
     pub selection: Selection,
     pub repositories: StatefulList<GittenRepositoryItem>,
-    pub branches: StatefulList<GittenStringItems>,
-    pub tags: StatefulList<GittenStringItems>,
+    pub branches: StatefulList<GittenStringItem>,
+    pub tags: StatefulList<GittenStringItem>,
     pub input: String,
     pub input_mode: InputMode,
     pub logs: StatefulList<String>,
     pub path: String,
-    pub channels: (Sender<notify::Result<Event>>, Receiver<notify::Result<Event>>)
+    pub repository_logs: Option<Logs>,
+    pub channels: (
+        Sender<notify::Result<Event>>,
+        Receiver<notify::Result<Event>>,
+    ),
 }
 
 impl App {
@@ -187,7 +228,10 @@ impl App {
 
         App::generate_application_content(&path, &mut content);
 
-        let (tx, rx): (Sender<notify::Result<Event>>, Receiver<notify::Result<Event>>) = channel(1);
+        let (tx, rx): (
+            Sender<notify::Result<Event>>,
+            Receiver<notify::Result<Event>>,
+        ) = channel(1);
 
         App {
             selection: Selection::Repositories,
@@ -197,8 +241,9 @@ impl App {
             input: String::new(),
             input_mode: InputMode::Normal,
             logs: StatefulList::with_items(vec![]),
+            repository_logs: None,
             path,
-            channels: (tx, rx)
+            channels: (tx, rx),
         }
     }
 
@@ -206,13 +251,11 @@ impl App {
         self.selection = s;
     }
 
-    pub fn on_tick(&mut self) { }
+    pub fn on_tick(&mut self) {}
 
     pub fn next(&mut self) {
         match self.selection {
-            Selection::Repositories => {
-                self.repositories.next()
-            },
+            Selection::Repositories => self.repositories.next(),
             Selection::Tags => self.tags.next(),
             Selection::Branches => self.branches.next(),
         };
@@ -231,38 +274,40 @@ impl App {
     pub fn process_input(&mut self) {
         let input: String = self.input.drain(..).collect();
 
-        let commands: Vec<String> = input.split_whitespace().map(|f| {
-            f.to_owned()
-        }).collect();
+        let commands: Vec<String> = input.split_whitespace().map(|f| f.to_owned()).collect();
 
-
-
-        if self.get_selected_repository().is_repository {
-            if !commands.is_empty() {
-                match self.selection {
-                    Selection::Repositories => {
-                        match commands[0].as_ref() {
-                            "co" => { let _ = self.checkout_to_branch(commands.get(1) ); },
-                            "tag" => { let _ = self.create_tag(commands.get(1)); },
-                            "rh" => { let _ = self.reset_selected_repository(ResetType::Hard); },
-                            "pull" => { let _ = self.pull_remote(commands.get(1)); }
-                            "fetch" => { let _ = self.fetch_remote(commands.get(1)); }
-                            _ => { self.add_log("Unknown command!".to_string()) }
-                        }
-                    },
-                    Selection::Branches => {
-                        match commands[0].as_ref() {
-                            "push" => { let _ = self.push_remote(commands.get(1), true); },
-                            _ => { self.add_log("Unknown command!".to_string()) }
-                        }
-                    },
-                    Selection::Tags => {
-                        match commands[0].as_ref() {
-                            "push" => { let _ = self.push_remote(commands.get(1), false); },
-                            _ => { self.add_log("Unknown command!".to_string()) }
-                        }
+        if self.get_selected_repository().is_repository && !commands.is_empty() {
+            match self.selection {
+                Selection::Repositories => match commands[0].as_ref() {
+                    "co" => {
+                        self.checkout_to_branch(commands.get(1));
                     }
-                }
+                    "tag" => {
+                        self.create_tag(commands.get(1));
+                    }
+                    "rh" => {
+                        self.reset_selected_repository(ResetType::Hard);
+                    }
+                    "pull" => {
+                        self.pull_remote(commands.get(1));
+                    }
+                    "fetch" => {
+                        self.fetch_remote(commands.get(1));
+                    }
+                    _ => self.add_log("Unknown command!".to_string()),
+                },
+                Selection::Branches => match commands[0].as_ref() {
+                    "push" => {
+                        self.push_remote(commands.get(1), true);
+                    }
+                    _ => self.add_log("Unknown command!".to_string()),
+                },
+                Selection::Tags => match commands[0].as_ref() {
+                    "push" => {
+                        self.push_remote(commands.get(1), false);
+                    }
+                    _ => self.add_log("Unknown command!".to_string()),
+                },
             }
         }
         self.input_mode = InputMode::Normal;
@@ -271,7 +316,10 @@ impl App {
     fn push_remote(&mut self, remote: Option<&String>, is_branch: bool) {
         let remote = match remote {
             Some(b) => b,
-            None => { self.add_log("remote name must not be null".to_string()); return }
+            None => {
+                self.add_log("remote name must not be null".to_string());
+                return;
+            }
         };
 
         let mut callbacks = git2::RemoteCallbacks::new();
@@ -287,27 +335,29 @@ impl App {
                     format!("refs/heads/{}", &self.branches.items[b].to_string())
                 } else {
                     self.add_log("Please select a branch!".to_string());
-                    return
+                    return;
                 }
             } else if let Some(t) = self.tags.state.selected() {
-                    format!("refs/tags/{}", &self.tags.items[t].to_string())
+                format!("refs/tags/{}", &self.tags.items[t].to_string())
             } else {
                 self.add_log("Please select a tag!".to_string());
-                return
+                return;
             };
 
             match remote.push(&[&ref_spec], Some(&mut opts)) {
                 Ok(()) => self.add_log("Push is successful!".to_string()),
-                Err(e) => { self.add_log("Error: ".to_owned() + e.message()) }
+                Err(e) => self.add_log("Error: ".to_owned() + e.message()),
             };
         }
     }
 
     fn pull_remote(&mut self, remote: Option<&String>) {
-
         let remote = match remote {
             Some(b) => b,
-            None => { self.add_log("remote name must not be null".to_string()); return }
+            None => {
+                self.add_log("remote name must not be null".to_string());
+                return;
+            }
         };
 
         let selected_repository = self.get_selected_repository();
@@ -317,77 +367,101 @@ impl App {
         match fetch_repository_from_remote(remote.as_str(), branch_name.as_str(), &repository) {
             Ok(r) => {
                 self.add_log(r);
-            },
-            Err(e) => {
-                self.add_log(format!("Error: {}", e.message()))
             }
+            Err(e) => self.add_log(format!("Error: {}", e.message())),
         };
     }
 
     fn fetch_remote(&mut self, remote: Option<&String>) {
-
         let remote = match remote {
             Some(b) => b,
-            None => { self.add_log("remote name must not be null".to_string()); return }
+            None => {
+                self.add_log("remote name must not be null".to_string());
+                return;
+            }
         };
 
         let selected_repository = self.get_selected_repository();
         let repository = get_repository(&selected_repository.path).unwrap();
 
-        match fetch_branches_repository_from_remote( remote.as_str(), &repository) {
+        match fetch_branches_repository_from_remote(remote.as_str(), &repository) {
             Ok(message) => {
                 self.add_log(message);
                 self.update_repository_details();
-            },
-            Err(e) => self.add_log(e.message().to_string())
+            }
+            Err(e) => self.add_log(e.message().to_string()),
         }
     }
 
     fn checkout_to_branch(&mut self, branch_name: Option<&String>) {
-
         let branch_name = match branch_name {
             Some(b) => b,
-            None => { self.add_log("Branch name must not be null".to_string()); return }
+            None => {
+                self.add_log("Branch name must not be null".to_string());
+                return;
+            }
         };
 
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
-            let head = repo.head().unwrap();
+            let head = match repo.head() {
+                Ok(h) => h,
+                Err(_) => {
+                    let sig = repo.signature().unwrap();
+                    let tree_id = {
+                        let mut index = repo.index().unwrap();
+                        index.write_tree().unwrap()
+                    };
+                    let tree = repo.find_tree(tree_id).unwrap();
+                    repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[]).unwrap();
+                    repo.head().unwrap()
+                }
+            };
+
             let oid = head.target().unwrap();
             let commit = repo.find_commit(oid).unwrap();
             let branch_name = branch_name.as_str();
-            let _branch = repo.branch(
-                branch_name,
-                &commit,
-                false,
-            );
-            let obj = repo.revparse_single(&("refs/heads/".to_owned() + branch_name)).unwrap();
+            let _branch = repo.branch(branch_name, &commit, false);
+            let obj = repo
+                .revparse_single(&("refs/heads/".to_owned() + branch_name))
+                .unwrap();
             match repo.checkout_tree(&obj, None) {
                 Ok(()) => {
                     let _result = repo.set_head(&("refs/heads/".to_owned() + branch_name));
                     self.get_selected_repository().active_branch_name = branch_name.to_string();
                     self.update_repository_details();
                     self.add_log("Checkout is successful!".to_string());
-                },
-                Err(e) => {
-                    self.add_log(format!("Error: {}", e.message()))
                 }
+                Err(e) => self.add_log(format!("Error: {}", e.message())),
             };
         }
     }
 
     fn create_tag(&mut self, tag_name: Option<&String>) {
-
         let tag_name = match tag_name {
             Some(b) => b,
-            None => { self.add_log("Tag name must not be null".to_string()); return }
+            None => {
+                self.add_log("Tag name must not be null".to_string());
+                return;
+            }
         };
 
         if let Some(repo) = get_repository(&self.get_selected_repository().path) {
-            let obj = repo.revparse_single(&("refs/heads/".to_owned() + &self.get_selected_repository().active_branch_name)).unwrap();
+            let obj = repo
+                .revparse_single(
+                    &("refs/heads/".to_owned()
+                        + &self.get_selected_repository().active_branch_name),
+                )
+                .unwrap();
             let sig = repo.signature().unwrap();
-            match repo.tag(tag_name.as_str(), &obj, &sig, format!("Release {}", tag_name).as_str(), true) {
-                Ok(_oid) => { self.add_log(String::from("Tag creation is successful!")) },
-                Err(e) => { self.add_log(format!("Error: {}", e.message()))  }
+            match repo.tag(
+                tag_name.as_str(),
+                &obj,
+                &sig,
+                format!("Release {}", tag_name).as_str(),
+                true,
+            ) {
+                Ok(_oid) => self.add_log(String::from("Tag creation is successful!")),
+                Err(e) => self.add_log(format!("Error: {}", e.message())),
             };
             self.update_repository_details();
         }
@@ -410,28 +484,28 @@ impl App {
         paths.for_each(|p| {
             let dir = p.unwrap();
             if !dir.file_name().to_str().unwrap().starts_with('.') {
-                let repository = get_repository(&dir.path().to_str().unwrap().to_string());
+                let repository = get_repository(&dir.path());
                 let active_branch_name = get_repository_active_branch(&repository);
                 let files_changed = get_files_changed(&repository).unwrap_or(0);
-                content.push(
-                    GittenRepositoryItem {
-                        path: dir.path().to_str().unwrap().to_string(),
-                        folder_name: dir.file_name().into_string().unwrap(),
-                        is_repository: is_repository(dir.path()),
-                        active_branch_name,
-                        files_changed
-                    }
-                );
+                content.push(GittenRepositoryItem {
+                    path: fs::canonicalize(&dir.path()).unwrap(),
+                    folder_name: dir.file_name().into_string().unwrap(),
+                    is_repository: is_repository(dir.path()),
+                    active_branch_name,
+                    files_changed,
+                });
             }
         });
         content.sort_by(|a, b| {
-            a.folder_name.to_lowercase().cmp(&b.folder_name.to_lowercase())
+            a.folder_name
+                .to_lowercase()
+                .cmp(&b.folder_name.to_lowercase())
         });
     }
 
     pub fn update_application_content(&mut self, path: &Path) {
         self.repositories.items.iter_mut().for_each(|f| {
-            if path.to_str().unwrap().contains(&f.path) {
+            if path.to_str().unwrap().contains(&f.path.to_str().unwrap()) {
                 let repository = get_repository(&f.path);
                 let mut is_repository = false;
                 let mut active_branch_name = String::new();
@@ -462,15 +536,17 @@ impl App {
                 Ok(()) => {
                     self.get_selected_repository().files_changed = 0;
                     self.add_log(String::from("Reset Successful!"))
-                },
-                Err(_) => self.add_log(String::from("Could not reset!"))
+                }
+                Err(_) => self.add_log(String::from("Could not reset!")),
             };
         }
     }
 
-    fn add_log(&mut self, message: String) {
+    pub fn add_log(&mut self, message: String) {
         if self.repositories.state.selected().is_some() {
-            self.logs.items.push(format!("{} - {}", self.get_repository_info(), message));
+            self.logs
+                .items
+                .push(format!("{} - {}", self.get_repository_info(), message));
         } else {
             self.logs.items.push(message);
         }
@@ -491,8 +567,7 @@ impl App {
                 } else {
                     String::from("No operation for non repository item | q")
                 }
-
-            },
+            }
             Selection::Branches => String::from(":push <remote> | q"),
             Selection::Tags => String::from(":push <remote> | q"),
         }
@@ -513,8 +588,23 @@ impl App {
     }
 
     pub fn run_command_with_path(&mut self) {
-        if let Err(e) = Command::new(&self.input).arg(&self.get_selected_repository().path).output() {
+        if let Err(e) = Command::new(&self.input)
+            .arg(&self.get_selected_repository().path)
+            .output()
+        {
             self.add_log(e.to_string())
+        }
+    }
+
+    pub fn scroll_logs_up(&mut self) {
+        if let Some(logs) = &mut self.repository_logs {
+            logs.scroll_up()
+        }
+    }
+
+    pub fn scroll_logs_down(&mut self) {
+        if let Some(logs) = &mut self.repository_logs {
+            logs.scroll_down()
         }
     }
 }
