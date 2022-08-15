@@ -1,6 +1,6 @@
 [package]
 name = "gitten"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["okhuz <haoralk@email.com>"]
 license = "MIT"
@@ -18,7 +18,7 @@ crossterm = "0.25.0"
 git2 = "0.15.0"
 dirs = "4.0.0"
 crossbeam-channel = "0.5.6"
-notify = "5.0.0-pre.15"
+notify = "5.0.0-pre.16"
 futures = "0.3.21"
 chrono = "0.4"
 

@@ -4,7 +4,7 @@ use crate::App;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode};
 use futures::SinkExt;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{io};
 use std::time::{Duration, Instant};
 use tui::backend::Backend;
@@ -28,7 +28,7 @@ pub fn run_app<B: Backend>(
         futures::executor::block_on(async {
             let _ = channels.send(res).await;
         });
-    })
+    }, Config::default())
     .unwrap();
 
     watcher
