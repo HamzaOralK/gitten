@@ -1,4 +1,4 @@
-use crate::repo::git_credentials_callback;
+use crate::git_operations::repo::git_credentials_callback;
 use git2::{AutotagOption, FetchOptions, FetchPrune, Remote, RemoteCallbacks, Repository};
 
 pub fn do_fetch<'a>(

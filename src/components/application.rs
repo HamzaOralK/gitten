@@ -1,210 +1,22 @@
-use crate::pull::{fetch_branches_repository_from_remote, fetch_repository_from_remote};
-use crate::repo::{
+use crate::git_operations::pull::{fetch_branches_repository_from_remote, fetch_repository_from_remote};
+use crate::git_operations::repo::{
     get_files_changed, get_repository, get_repository_active_branch, get_repository_branches,
     get_repository_tags, git_credentials_callback, is_repository,
 };
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use git2::{PushOptions, ResetType};
 use notify::Event;
-use std::fmt::{Debug, Display, Formatter};
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use std::process::Command;
 use std::string::String;
-use std::{fmt, fs};
-use tui::layout::Rect;
-use tui::style::{Color, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{ListItem, ListState};
-
-pub trait ConvertableToListItem {
-    fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
-}
-
-#[derive(PartialEq)]
-pub enum Selection {
-    Repositories,
-    Tags,
-    Branches,
-}
-
-impl Display for Selection {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Selection::Repositories => "(R)epositories",
-                Selection::Tags => "(T)ags",
-                Selection::Branches => "(B)ranches",
-            }
-        )
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct GittenRepositoryItem {
-    pub path: PathBuf,
-    pub folder_name: String,
-    pub is_repository: bool,
-    pub active_branch_name: String,
-    pub files_changed: usize,
-}
-
-impl GittenRepositoryItem {
-    fn set_active_branch_name(&mut self, name: String) {
-        self.active_branch_name = name;
-    }
-
-    fn set_files_changed(&mut self, files_changed: usize) {
-        self.files_changed = files_changed;
-    }
-}
-
-impl Display for GittenRepositoryItem {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.folder_name)
-    }
-}
-
-impl ConvertableToListItem for GittenRepositoryItem {
-    fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem {
-        let mut lines: Spans = Spans::default();
-        let mut line_color = Color::Reset;
-        if self.is_repository {
-            let mut margin = 4;
-            if self.files_changed > 0 {
-                margin += 1;
-            }
-            let repeat_time = if chunk.unwrap().width
-                > ((self.active_branch_name.len() as u16)
-                    + (self.folder_name.len() as u16)
-                    + margin)
-            {
-                chunk.unwrap().width
-                    - ((self.active_branch_name.len() as u16)
-                        + (self.folder_name.len() as u16)
-                        + margin)
-            } else {
-                0
-            };
-            lines.0.push(Span::from(self.folder_name.clone()));
-            lines.0.push(Span::from(" ".repeat((repeat_time) as usize)));
-            lines.0.push(Span::raw("("));
-            lines
-                .0
-                .push(Span::from(self.active_branch_name.to_string()));
-            lines
-                .0
-                .push(Span::from(if self.files_changed > 0 { "*" } else { "" }));
-            lines.0.push(Span::raw(")"));
-            line_color = Color::Green
-        } else {
-            lines.0.push(Span::from(self.folder_name.clone()));
-        }
-        ListItem::new(lines).style(Style::default().fg(Color::White).bg(line_color))
-    }
-}
-
-type GittenStringItem = String;
-
-impl ConvertableToListItem for GittenStringItem {
-    fn convert_to_list_item(&self, _chunk: Option<&Rect>) -> ListItem {
-        ListItem::new(vec![Spans::from(vec![Span::raw(self.to_string())])])
-    }
-}
-
-#[derive(PartialEq)]
-pub enum InputMode {
-    Normal,
-    Editing,
-    Search,
-    Command,
-    Logs
-}
-
-pub struct StatefulList<T> {
-    pub state: ListState,
-    pub items: Vec<T>,
-}
-
-impl<T: Display> StatefulList<T> {
-    fn with_items(items: Vec<T>) -> StatefulList<T> {
-        StatefulList {
-            state: ListState::default(),
-            items,
-        }
-    }
-
-    pub fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if !self.items.is_empty() {
-                    if i >= self.items.len() - 1 {
-                        0
-                    } else {
-                        i + 1
-                    }
-                } else {
-                    0
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-    }
-
-    pub fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if !self.items.is_empty() {
-                    if i == 0 {
-                        self.items.len() - 1
-                    } else {
-                        i - 1
-                    }
-                } else {
-                    0
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-    }
-
-    pub fn unselect(&mut self) {
-        self.state.select(None);
-    }
-
-    pub fn search(&mut self, input: &str) {
-        self.items.iter().enumerate().for_each(|(i, _x)| {
-            if self.items[i]
-                .to_string()
-                .to_lowercase()
-                .contains(&input.to_lowercase())
-            {
-                self.state.select(Some(i));
-            }
-        });
-    }
-}
-
-#[derive(Clone)]
-pub struct Logs {
-    pub log: String,
-    pub offset: (u16, u16)
-}
-
-impl Logs {
-    pub fn scroll_down(&mut self) {
-        self.offset.0 += 1;
-    }
-
-    pub fn scroll_up(&mut self) {
-        if self.offset.0 > 0 {
-            self.offset.0 -= 1;
-        }
-    }
-}
+use std::fs;
+use crate::components::{
+    items::{GittenRepositoryItem, GittenStringItem},
+    logs::Logs,
+    modes::InputMode,
+    selection::Selection,
+    stateful_list::StatefulList,
+};
 
 pub struct App {
     pub selection: Selection,

@@ -1,4 +1,3 @@
-use crate::app::{InputMode, Logs, Selection};
 use crate::utility::{centered_rect, create_block, create_block_with_selection, create_block_with_title, create_selection_list_from_vector};
 use crate::App;
 use crossterm::event;
@@ -13,7 +12,14 @@ use tui::style::{Color, Style};
 use tui::widgets::{Block, Borders, Clear, Paragraph};
 use tui::{Frame, Terminal};
 use tui::text::{Text};
-use crate::log::print_log;
+
+use crate::git_operations::log::print_log;
+
+use crate::components::{
+    logs::Logs,
+    modes::InputMode,
+    selection::Selection,
+};
 
 pub fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,

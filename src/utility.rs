@@ -1,10 +1,14 @@
-use crate::app::{ConvertableToListItem, Selection};
 use crate::App;
 use std::fmt::Display;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, List, ListItem};
+
+use crate::components::{
+    selection::Selection,
+    items::ConvertableToListItem,
+};
 
 fn convert_vector_to_list_item_vector<'a, T: Display + ConvertableToListItem>(
     iterator: &'a [T],

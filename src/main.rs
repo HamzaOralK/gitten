@@ -1,23 +1,24 @@
 extern crate core;
 
-mod app;
-mod pull;
-mod repo;
-mod run_app;
-mod utility;
-mod log;
-
-use app::App;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
-use run_app::run_app;
 use std::io;
 use std::path::Path;
 use std::time::Duration;
 use tui::{backend::CrosstermBackend, Terminal};
+
+mod run_app;
+use run_app::run_app;
+mod utility;
+
+mod git_operations;
+
+mod components;
+use components::application::App;
+
 
 fn main() -> Result<(), io::Error> {
     let path = std::env::args().nth(1).unwrap_or_else(|| "./".to_string());
