@@ -10,6 +10,7 @@ pub trait ConvertableToListItem {
     fn convert_to_list_item(&self, chunk: Option<&Rect>) -> ListItem;
 }
 
+/// Repository item for complex repository object
 #[derive(Debug, Default)]
 pub struct GittenRepositoryItem {
     pub path: PathBuf,
@@ -20,6 +21,10 @@ pub struct GittenRepositoryItem {
 }
 
 impl GittenRepositoryItem {
+    pub fn builder() -> GittenRepositoryItemBuilder {
+        GittenRepositoryItemBuilder::default()
+    }
+
     pub fn set_active_branch_name(&mut self, name: String) {
         self.active_branch_name = name;
     }
@@ -74,6 +79,54 @@ impl ConvertableToListItem for GittenRepositoryItem {
     }
 }
 
+#[derive(Default)]
+pub struct GittenRepositoryItemBuilder {
+    pub path: PathBuf,
+    pub folder_name: String,
+    pub is_repository: bool,
+    pub active_branch_name: String,
+    pub files_changed: usize,
+}
+
+impl GittenRepositoryItemBuilder {
+    pub fn path(mut self, path: PathBuf) -> GittenRepositoryItemBuilder {
+        self.path = path;
+        self
+    }
+
+    pub fn folder_name(mut self, folder_name: String) -> GittenRepositoryItemBuilder {
+        self.folder_name = folder_name;
+        self
+    }
+
+    pub fn set_is_repository(mut self, is_repository: bool) -> GittenRepositoryItemBuilder {
+        self.is_repository = is_repository;
+        self
+    }
+
+    pub fn active_branch_name(mut self, active_branch_name: String) -> GittenRepositoryItemBuilder {
+        self.active_branch_name = active_branch_name;
+        self
+    }
+
+    pub fn files_changed(mut self, files_changed: usize) -> GittenRepositoryItemBuilder {
+        self.files_changed = files_changed;
+        self
+    }
+
+    pub fn build(self) -> GittenRepositoryItem {
+        GittenRepositoryItem {
+            path: self.path,
+            folder_name: self.folder_name,
+            is_repository: self.is_repository,
+            active_branch_name: self.active_branch_name,
+            files_changed: self.files_changed
+        }
+    }
+
+}
+
+/// String item for tabs and brnaches
 pub type GittenStringItem = String;
 
 impl ConvertableToListItem for GittenStringItem {

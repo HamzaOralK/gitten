@@ -1,17 +1,15 @@
 use std::fmt::Display;
 use tui::widgets::ListState;
 
+#[derive(Default)]
 pub struct StatefulList<T> {
     pub state: ListState,
     pub items: Vec<T>,
 }
 
-impl<T: Display> StatefulList<T> {
-    pub fn with_items(items: Vec<T>) -> StatefulList<T> {
-        StatefulList {
-            state: ListState::default(),
-            items,
-        }
+impl<T: Display + Default> StatefulList<T> {
+    pub fn builder() -> StatefulListBuilder<T> {
+        StatefulListBuilder::default()
     }
 
     pub fn next(&mut self) {
@@ -64,5 +62,24 @@ impl<T: Display> StatefulList<T> {
                 self.state.select(Some(i));
             }
         });
+    }
+}
+
+#[derive(Default)]
+pub struct StatefulListBuilder<T> {
+    pub items: Vec<T>
+}
+
+impl<T: Display + Default> StatefulListBuilder<T> {
+    pub fn items(mut self, items: Vec<T>) -> StatefulListBuilder<T> {
+        self.items = items;
+        self
+    }
+
+    pub fn build(self) -> StatefulList<T> {
+        StatefulList {
+            state: ListState::default(),
+            items: self.items
+        }
     }
 }

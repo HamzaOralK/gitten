@@ -32,7 +32,7 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let app = App::new(path);
+    let app = App::builder().path(path).build();
     let _ = run_app(&mut terminal, app, Duration::from_millis(5000));
 
     disable_raw_mode()?;

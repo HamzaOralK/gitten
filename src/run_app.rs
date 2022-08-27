@@ -209,20 +209,18 @@ fn ui<'a, B: Backend>(f: &'a mut Frame<B>, app: &'a mut App) {
         let area = centered_rect(90, 90, size);
         f.render_widget(Clear, area); //this clears out the background
 
-        let paragraph = if let Some(logs) = &app.repository_logs {
-            Paragraph::new(Text::from(logs.log.clone())).scroll(logs.offset).block(block)
+        let paragraph = if let Some(repository_logs) = &app.repository_logs {
+            Paragraph::new(Text::from(repository_logs.logs.clone())).scroll(repository_logs.offset).block(block)
         } else {
-            app.repository_logs = Some(Logs{
-                log: if let Ok(logs) = print_log(&app.get_selected_repository().path) {
-                    logs
-                } else {
-                    "No logs".to_owned()
-                },
-                offset: (0, 0)
-            });
+            let repository_logs_string = if let Ok(logs) = print_log(&app.get_selected_repository().path) {
+                logs
+            } else {
+                "No logs".to_owned()
+            };
+            app.repository_logs = Some(Logs::builder().logs(repository_logs_string).build());
 
-            if let Some(logs) = &app.repository_logs {
-                Paragraph::new(Text::from(logs.log.clone())).scroll(logs.offset)
+            if let Some(repository_logs) = &app.repository_logs {
+                Paragraph::new(Text::from(repository_logs.logs.clone())).scroll(repository_logs.offset)
             } else {
                 Paragraph::new("No logs")
             }.block(block)

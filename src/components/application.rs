@@ -35,28 +35,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(path: String) -> App {
-        let mut content = Vec::new();
-
-        App::generate_application_content(&path, &mut content);
-
-        let (tx, rx): (
-            Sender<notify::Result<Event>>,
-            Receiver<notify::Result<Event>>,
-        ) = channel(1);
-
-        App {
-            selection: Selection::Repositories,
-            repositories: StatefulList::with_items(content),
-            branches: StatefulList::with_items(vec![]),
-            tags: StatefulList::with_items(vec![]),
-            input: String::new(),
-            input_mode: InputMode::Normal,
-            logs: StatefulList::with_items(vec![]),
-            repository_logs: None,
-            path,
-            channels: (tx, rx),
-        }
+    pub fn builder() -> AppBuilder {
+        AppBuilder::default()
     }
 
     pub fn change_selection(&mut self, s: Selection) {
@@ -284,35 +264,10 @@ impl App {
             //Get selected repository
             let rep = get_repository(&self.get_selected_repository().path);
             self.tags.unselect();
-            self.tags = StatefulList::with_items(get_repository_tags(&rep));
+            self.tags = StatefulList::builder().items(get_repository_tags(&rep)).build();
             self.branches.unselect();
-            self.branches = StatefulList::with_items(get_repository_branches(&rep));
+            self.branches = StatefulList::builder().items(get_repository_branches(&rep)).build();
         }
-    }
-
-    fn generate_application_content(path: &String, content: &mut Vec<GittenRepositoryItem>) {
-        let paths = fs::read_dir(path).unwrap();
-
-        paths.for_each(|p| {
-            let dir = p.unwrap();
-            if !dir.file_name().to_str().unwrap().starts_with('.') {
-                let repository = get_repository(&dir.path());
-                let active_branch_name = get_repository_active_branch(&repository);
-                let files_changed = get_files_changed(&repository).unwrap_or(0);
-                content.push(GittenRepositoryItem {
-                    path: fs::canonicalize(&dir.path()).unwrap(),
-                    folder_name: dir.file_name().into_string().unwrap(),
-                    is_repository: is_repository(dir.path()),
-                    active_branch_name,
-                    files_changed,
-                });
-            }
-        });
-        content.sort_by(|a, b| {
-            a.folder_name
-                .to_lowercase()
-                .cmp(&b.folder_name.to_lowercase())
-        });
     }
 
     pub fn update_application_content(&mut self, path: &Path) {
@@ -375,7 +330,7 @@ impl App {
         match self.selection {
             Selection::Repositories => {
                 if self.get_selected_repository().is_repository {
-                    String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | q")
+                    String::from(":co | :tag | :rh | :pull <remote> | :fetch <remote> | l to see the logs | q")
                 } else {
                     String::from("No operation for non repository item | q")
                 }
@@ -417,6 +372,73 @@ impl App {
     pub fn scroll_logs_down(&mut self) {
         if let Some(logs) = &mut self.repository_logs {
             logs.scroll_down()
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct AppBuilder {
+    pub repositories: StatefulList<GittenRepositoryItem>,
+    pub branches: StatefulList<GittenStringItem>,
+    pub tags: StatefulList<GittenStringItem>,
+    pub path: String
+}
+
+impl AppBuilder {
+    pub fn path(mut self, path: String) -> AppBuilder {
+        self.path = path;
+        self
+    }
+
+    fn generate_application_content(path: &String, content: &mut Vec<GittenRepositoryItem>) {
+        let paths = fs::read_dir(path).unwrap();
+
+        paths.for_each(|p| {
+            let dir = p.unwrap();
+            if !dir.file_name().to_str().unwrap().starts_with('.') {
+                let repository = get_repository(&dir.path());
+                let active_branch_name = get_repository_active_branch(&repository);
+                let files_changed = get_files_changed(&repository).unwrap_or(0);
+
+                let repository_item = GittenRepositoryItem::builder()
+                    .path(fs::canonicalize(&dir.path()).unwrap())
+                    .folder_name(dir.file_name().into_string().unwrap())
+                    .set_is_repository(is_repository(dir.path()))
+                    .files_changed(files_changed)
+                    .active_branch_name(active_branch_name)
+                    .build();
+
+                content.push(repository_item);
+            }
+        });
+        content.sort_by(|a, b| {
+            a.folder_name
+                .to_lowercase()
+                .cmp(&b.folder_name.to_lowercase())
+        });
+    }
+
+    pub fn build(self) -> App {
+        let mut content = Vec::new();
+
+        AppBuilder::generate_application_content(&self.path, &mut content);
+
+        let (tx, rx): (
+            Sender<notify::Result<Event>>,
+            Receiver<notify::Result<Event>>,
+        ) = channel(1);
+
+        App {
+            selection: Selection::Repositories,
+            repositories: StatefulList::builder().items(content).build(),
+            branches: StatefulList::builder().items(vec![]).build(),
+            tags: StatefulList::builder().items(vec![]).build(),
+            input: String::new(),
+            input_mode: InputMode::Normal,
+            logs: StatefulList::builder().items(vec![]).build(),
+            repository_logs: None,
+            path: self.path,
+            channels: (tx, rx),
         }
     }
 }
